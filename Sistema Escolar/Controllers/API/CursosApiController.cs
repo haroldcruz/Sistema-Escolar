@@ -1,89 +1,69 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SistemaEscolar.DTOs.Cursos;
 using SistemaEscolar.Interfaces.Cursos;
+using SistemaEscolar.DTOs.Cursos;
+using System.Threading.Tasks;
+using System.Linq;
 
 namespace SistemaEscolar.Controllers.API
 {
- // API para gestión de cursos
  [ApiController]
- [Route("api/[controller]")]
- [Authorize(Roles = "Administrador,Coordinador")]
+ [Route("api/cursos")] // Ruta fija para coincidir con fetch('/api/cursos')
+ [Produces("application/json")]
+ [Authorize(Policy = "Cursos.Ver")]
  public class CursosApiController : ControllerBase
  {
- private readonly ICursoService _service;
+ private readonly ICursoService _cursos;
+ public CursosApiController(ICursoService cursos){ _cursos = cursos; }
 
- public CursosApiController(ICursoService service)
- {
- _service = service;
- }
-
- // GET: api/cursos
+ // GET api/cursos
  [HttpGet]
  public async Task<IActionResult> GetAll()
  {
- var cursos = await _service.GetAllAsync();
- return Ok(cursos);
+ var lista = await _cursos.GetAllAsync();
+ return Ok(lista);
  }
 
- // GET: api/cursos/{id}
- [HttpGet("{id}")]
- public async Task<IActionResult> GetById(int id)
+ // GET api/cursos/{id}
+ [HttpGet("{id:int}")]
+ public async Task<IActionResult> Get(int id)
  {
- var curso = await _service.GetByIdAsync(id);
-
- if (curso == null)
- return NotFound(new { message = "Curso no encontrado" });
-
+ var curso = await _cursos.GetByIdAsync(id);
+ if (curso == null) return NotFound();
  return Ok(curso);
  }
 
- // POST: api/cursos
+ // POST api/cursos
  [HttpPost]
+ [Authorize(Policy = "Cursos.Crear")]
  public async Task<IActionResult> Create([FromBody] CursoCreateDTO dto)
  {
- var ok = await _service.CreateAsync(dto);
-
- if (!ok)
- return BadRequest(new { message = "No se pudo crear el curso" });
-
- return Ok(new { message = "Curso creado" });
+ if (!ModelState.IsValid) return BadRequest(ModelState);
+ var ok = await _cursos.CreateAsync(dto);
+ if (!ok) return BadRequest();
+ // No se expone id en servicio actual, devolver204 para simplicidad
+ return NoContent();
  }
 
- // PUT: api/cursos/{id}
- [HttpPut("{id}")]
+ // PUT api/cursos/{id}
+ [HttpPut("{id:int}")]
+ [Authorize(Policy = "Cursos.Editar")]
  public async Task<IActionResult> Update(int id, [FromBody] CursoUpdateDTO dto)
  {
- var ok = await _service.UpdateAsync(id, dto);
-
- if (!ok)
- return NotFound(new { message = "Curso no encontrado" });
-
- return Ok(new { message = "Curso actualizado" });
+ if (!ModelState.IsValid) return BadRequest(ModelState);
+ var ok = await _cursos.UpdateAsync(id, dto);
+ if (!ok) return NotFound();
+ return NoContent();
  }
 
- // DELETE: api/cursos/{id}
- [HttpDelete("{id}")]
+ // DELETE api/cursos/{id}
+ [HttpDelete("{id:int}")]
+ [Authorize(Policy = "Cursos.Eliminar")]
  public async Task<IActionResult> Delete(int id)
  {
- var ok = await _service.DeleteAsync(id);
-
- if (!ok)
- return NotFound(new { message = "Curso no encontrado" });
-
- return Ok(new { message = "Curso eliminado" });
- }
-
- // POST: api/cursos/asignar-docente
- [HttpPost("asignar-docente")]
- public async Task<IActionResult> AsignarDocente([FromBody] CursoDocenteDTO dto)
- {
- var ok = await _service.AsignarDocenteAsync(dto);
-
- if (!ok)
- return BadRequest(new { message = "No se pudo asignar el docente" });
-
- return Ok(new { message = "Docente asignado" });
+ var ok = await _cursos.DeleteAsync(id);
+ if (!ok) return NotFound();
+ return NoContent();
  }
  }
 }

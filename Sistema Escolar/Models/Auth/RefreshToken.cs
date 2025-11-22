@@ -7,8 +7,11 @@ namespace SistemaEscolar.Models.Auth
  {
  public int Id { get; set; } // PK
 
- public required string Token { get; set; }
+ public required string Token { get; set; } = string.Empty;
+ public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+ // Nombre de columna según migración inicial: Expiracion
  public DateTime Expiracion { get; set; }
+ // Nombre de columna según migración inicial: Revocado
  public bool Revocado { get; set; }
 
  public int UsuarioId { get; set; } // FK

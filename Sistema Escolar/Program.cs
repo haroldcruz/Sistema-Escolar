@@ -1,159 +1,125 @@
 ﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using SistemaEscolar.Data;
 using SistemaEscolar.Helpers;
 using SistemaEscolar.Interfaces.Auth;
-using SistemaEscolar.Services.Auth;
-using SistemaEscolar.Interfaces.Usuarios;
-using SistemaEscolar.Services.Usuarios;
-using SistemaEscolar.Interfaces.Cursos;
-using SistemaEscolar.Services.Cursos;
-using SistemaEscolar.Interfaces.Historial;
-using SistemaEscolar.Services.Historial;
 using SistemaEscolar.Interfaces.Bitacora;
-using SistemaEscolar.Services.Bitacora;
+using SistemaEscolar.Interfaces.Cursos;
+using SistemaEscolar.Interfaces.Historial;
+using SistemaEscolar.Interfaces.Usuarios;
 using SistemaEscolar.Middleware;
+using SistemaEscolar.Services.Auth;
+using SistemaEscolar.Services.Bitacora;
+using SistemaEscolar.Services.Cursos;
+using SistemaEscolar.Services.Historial;
+using SistemaEscolar.Services.Usuarios;
 using System.Text;
-using System.Threading.Tasks;
+using System.Security.Cryptography;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ========================================
-// Carga correcta de appsettings.json
-// ========================================
-builder.Configuration
- .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
- .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
- .AddEnvironmentVariables();
+// DB
+builder.Services.AddDbContext<ApplicationDbContext>(opt =>
+ opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ========================================
-// DB CONTEXT
-// ========================================
-var conn = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
- options.UseSqlServer(conn)); // removido UseQuerySplittingBehavior
+// JWT settings
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings
+{
+ Secret = "DEV_SUPER_LONG_SECRET_KEY_CHANGE_ME__1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".PadRight(64,'X'),
+ Issuer = "SistemaEscolar",
+ Audience = "SistemaEscolar",
+ ExpirationMinutes =60
+};
+if(string.IsNullOrWhiteSpace(jwtSettings.Secret) || Encoding.UTF8.GetBytes(jwtSettings.Secret).Length <32) //256 bits
+{
+ jwtSettings.Secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+}
+builder.Services.AddSingleton(jwtSettings);
 
-// ========================================
-// JWT Settings (correcto: usa la sección "Jwt")
-// ========================================
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
-
-// ========================================
-// Dependency Injection (Servicios)
-// ========================================
-builder.Services.AddHttpContextAccessor(); // NECESARIO para inyección en AuthService, CursoService, UsuarioService
-builder.Services.AddScoped<JwtHelper>();
+// DI services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
+builder.Services.AddScoped<IRolService, RolService>(); // REGISTRO FALTANTE
 builder.Services.AddScoped<ICursoService, CursoService>();
 builder.Services.AddScoped<IHistorialService, HistorialService>();
 builder.Services.AddScoped<IBitacoraService, BitacoraService>();
+builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddControllersWithViews(); // habilita vistas + API
-builder.Services.AddRazorPages();
-
-// ========================================
-// AUTHENTICATION JWT
-// ========================================
-var jwtSection = builder.Configuration.GetSection("Jwt");
-
-// Debug para verificar lectura de configuración
-Console.WriteLine(">>> JWT SECTION TEST");
-Console.WriteLine("Issuer: " + builder.Configuration["Jwt:Issuer"]);
-Console.WriteLine("Audience: " + builder.Configuration["Jwt:Audience"]);
-Console.WriteLine("Key: " + builder.Configuration["Jwt:Key"]);
-
-var issuer = jwtSection.GetValue<string>("Issuer") ?? "SistemaEscolar";
-var audience = jwtSection.GetValue<string>("Audience") ?? "SistemaEscolarUsers";
-var key = jwtSection.GetValue<string>("Key") ?? "DevFallbackKey_ChangeMe123!";
-var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-
+// Auth
+var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
+// Cookie para vistas + JWT para APIs
 builder.Services.AddAuthentication(options =>
 {
- options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
- options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+ options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+ options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+ options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
-.AddJwtBearer(options =>
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
 {
- options.TokenValidationParameters = new TokenValidationParameters
+ opt.LoginPath = "/Auth/Login";
+ opt.LogoutPath = "/Auth/Logout";
+ opt.AccessDeniedPath = "/Auth/AccessDenied"; // ruta existente
+ opt.Cookie.Name = "app_auth";
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+{
+ o.TokenValidationParameters = new TokenValidationParameters
  {
  ValidateIssuer = true,
  ValidateAudience = true,
  ValidateLifetime = true,
  ValidateIssuerSigningKey = true,
- ValidIssuer = issuer,
- ValidAudience = audience,
- IssuerSigningKey = signingKey,
- ClockSkew = TimeSpan.FromMinutes(1) // reducir ventana para seguridad
+ ValidIssuer = jwtSettings.Issuer,
+ ValidAudience = jwtSettings.Audience,
+ IssuerSigningKey = new SymmetricSecurityKey(key)
  };
- options.Events = new JwtBearerEvents
+ // Recuperar token desde cookie "jwt"
+ o.Events = new JwtBearerEvents
  {
- OnMessageReceived = context =>
+ OnMessageReceived = ctx =>
  {
- if (string.IsNullOrEmpty(context.Token))
- {
- var cookie = context.Request.Cookies["jwt"]; // token guardado tras login
- if (!string.IsNullOrEmpty(cookie))
- context.Token = cookie;
- }
- return Task.CompletedTask;
- },
- OnAuthenticationFailed = ctx =>
- {
- Console.WriteLine($"JWT auth failed: {ctx.Exception.Message}");
+ var token = ctx.Request.Cookies["jwt"]; // cookie creada al login
+ if (!string.IsNullOrEmpty(token)) ctx.Token = token;
  return Task.CompletedTask;
  }
  };
 });
 
-// Definir policies basadas en claim "permiso"
-builder.Services.AddAuthorization(options =>
+// Authorization policies (permiso claim)
+builder.Services.AddAuthorization(opts =>
 {
- string[] permisos = new[]
- {
+ string[] permisos = new[] {
  "Usuarios.Gestion","Cursos.Ver","Cursos.Crear","Cursos.Editar","Cursos.Eliminar","Cursos.AsignarDocente","Historial.Ver","Bitacora.Ver","Seguridad.Gestion"
  };
  foreach (var p in permisos)
- options.AddPolicy(p, policy => policy.RequireClaim("permiso", p));
+ opts.AddPolicy(p, pol => pol.RequireClaim("permiso", p));
 });
 
-// ========================================
-// APP PIPELINE
-// ========================================
+builder.Services.AddControllersWithViews();
+
 var app = builder.Build();
 
-// Aplicar migraciones automáticamente (incluye tabla RefreshTokens)
+// Seed
 using (var scope = app.Services.CreateScope())
 {
  var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
- ctx.Database.Migrate();
- // Seed data
- DataSeeder.Seed(ctx);
+    ctx.Database.EnsureCreated();
+    DataSeeder.Seed(ctx);
 }
 
-// Manejo global de errores
 app.UseMiddleware<ErrorHandlerMiddleware>();
-
-app.UseHttpsRedirection();
 app.UseStaticFiles();
-
 app.UseRouting();
-
-// Jwt cookie helper antes de autenticación
-app.UseMiddleware<JwtMiddleware>();
-// Autenticación y autorización
 app.UseAuthentication();
+app.UseMiddleware<JwtMiddleware>();
 app.UseAuthorization();
-
-// Middlewares personalizados
 app.UseMiddleware<BitacoraMiddleware>();
 
-// MVC + API
+// Habilitar rutas por atributos en controladores API (ej: /api/cursos)
 app.MapControllers();
-app.MapRazorPages();
 
-// RUTA POR DEFECTO PARA CONTROLADORES MVC
 app.MapControllerRoute(
  name: "default",
  pattern: "{controller=Home}/{action=Index}/{id?}");

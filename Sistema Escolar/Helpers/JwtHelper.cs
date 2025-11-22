@@ -3,68 +3,51 @@ using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SistemaEscolar.Models;
+using SistemaEscolar.Data;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace SistemaEscolar.Helpers
 {
     // Genera JWT y refresh tokens
-    public class JwtHelper
+    public static class JwtHelper
     {
-        private readonly JwtSettings _settings;
-
-        public JwtHelper(IOptions<JwtSettings> settings)
-        {
-            _settings = settings.Value;
-        }
-
         // Genera el JWT principal con roles y permisos
-        public string GenerateToken(Usuario usuario)
+        public static string GenerateToken(Usuario usuario, IEnumerable<string> roles, ApplicationDbContext ctx, JwtSettings settings)
         {
+            var handler = new JwtSecurityTokenHandler();
+            var key = Encoding.UTF8.GetBytes(settings.Secret);
+
+            // Permisos agregados por roles
+            var permisos = ctx.RolPermisos.Include(rp => rp.Permiso)
+                .Where(rp => rp.Rol.UsuarioRoles.Any(ur => ur.UsuarioId == usuario.Id))
+                .Select(rp => rp.Permiso.Codigo)
+                .Distinct()
+                .ToList();
+
             var claims = new List<Claim>
             {
+                new Claim(JwtRegisteredClaimNames.Sub, usuario.Id.ToString()),
+                new Claim(JwtRegisteredClaimNames.Email, usuario.Email),
                 new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                new Claim(ClaimTypes.Name, $"{usuario.Nombre} {usuario.Apellidos}"),
-                new Claim(ClaimTypes.Email, usuario.Email ?? string.Empty)
+                new Claim(ClaimTypes.Name, usuario.Nombre + " " + usuario.Apellidos)
             };
+            claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
+            claims.AddRange(permisos.Select(p => new Claim("permiso", p)));
 
-            // Roles
-            var roles = usuario.UsuarioRoles?.Select(ur => ur.Rol?.Nombre).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct() ?? Enumerable.Empty<string>();
-            foreach (var r in roles)
-                claims.Add(new Claim(ClaimTypes.Role, r!));
-
-            // Permisos (claim personalizado "permiso")
-            var permisos = usuario.UsuarioRoles?
-                .Where(ur => ur.Rol != null && ur.Rol.RolPermisos != null)
-                .SelectMany(ur => ur.Rol!.RolPermisos!)
-                .Where(rp => rp.Permiso != null)
-                .Select(rp => rp.Permiso!.Codigo)
-                .Distinct() ?? Enumerable.Empty<string>();
-            foreach (var p in permisos)
-                claims.Add(new Claim("permiso", p));
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-            var token = new JwtSecurityToken(
-                issuer: _settings.Issuer,
-                audience: _settings.Audience,
-                claims: claims,
-                notBefore: DateTime.UtcNow,
-                expires: DateTime.UtcNow.AddMinutes(_settings.ExpirationMinutes > 0 ? _settings.ExpirationMinutes : 60),
-                signingCredentials: creds);
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        // Genera un refresh token aleatorio
-        public string GenerateRefreshToken()
-        {
-            var bytes = new byte[64];
-            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
-            rng.GetBytes(bytes);
-            return Convert.ToBase64String(bytes);
+            var descriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(settings.ExpirationMinutes),
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature),
+                Issuer = settings.Issuer,
+                Audience = settings.Audience
+            };
+            var token = handler.CreateToken(descriptor);
+            return handler.WriteToken(token);
         }
     }
 }

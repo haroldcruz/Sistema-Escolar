@@ -7,8 +7,9 @@ namespace SistemaEscolar.DTOs.Auth
  public required string RefreshToken { get; set; }
 
  public int UsuarioId { get; set; }
- public required string NombreCompleto { get; set; }
- public required string Email { get; set; }
- public required string RolPrincipal { get; set; }
+ public required string NombreCompleto { get; set; } = string.Empty;
+ public required string Email { get; set; } = string.Empty;
+ public required string RolPrincipal { get; set; } = string.Empty;
+ public required List<string> Roles { get; set; } = new();
  }
 }

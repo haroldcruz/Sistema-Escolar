@@ -2,13 +2,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaEscolar.DTOs.Usuarios;
 using SistemaEscolar.Interfaces.Usuarios;
+using System.Threading.Tasks;
 
 namespace SistemaEscolar.Controllers.API
 {
- // API para CRUD de usuarios
  [ApiController]
- [Route("api/[controller]")]
- [Authorize(Policy = "Usuarios.Gestion")] // protección por permiso granular
+ [Route("api/usuarios")] // ruta fija
+ [Authorize(Policy = "Usuarios.Gestion")] // requiere claim permiso
  public class UsuariosApiController : ControllerBase
  {
  private readonly IUsuarioService _service;

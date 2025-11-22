@@ -1,0 +1,25 @@
+@model IEnumerable<SistemaEscolar.DTOs.Usuarios.RolDTO>
+@{
+ ViewBag.Title = "Roles";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Roles y Permisos</h2>
+<table class="table table-sm table-striped">
+ <thead class="table-dark">
+ <tr><th>Rol</th><th>Permisos</th></tr>
+ </thead>
+ <tbody>
+ @foreach(var r in Model){
+ <tr>
+ <td>@r.Nombre</td>
+ <td>
+ @if(r.Permisos.Any()){
+ <ul class="mb-0">
+ @foreach(var p in r.Permisos){<li>@p</li>}
+ </ul>
+ } else { <span class="text-muted">(sin permisos)</span> }
+ </td>
+ </tr>
+ }
+ </tbody>
+</table>

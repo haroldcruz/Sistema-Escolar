@@ -60,6 +60,16 @@ namespace SistemaEscolar.Services.Bitacora
             return entities.Select(MapDto).ToList();
         }
 
+        // NUEVO: Obtener por usuario
+        public async Task<IEnumerable<BitacoraDTO>> GetByUsuarioAsync(int usuarioId)
+        {
+            var entities = await _context.BitacoraEntries.Include(b => b.Usuario)
+                .Where(b => b.UsuarioId == usuarioId)
+                .OrderByDescending(b => b.Fecha)
+                .ToListAsync();
+            return entities.Select(MapDto).ToList();
+        }
+
         private static BitacoraDTO MapDto(BitacoraEntry b) => new BitacoraDTO
         {
             Id = b.Id,

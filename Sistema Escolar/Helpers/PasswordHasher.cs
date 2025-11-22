@@ -10,32 +10,18 @@ namespace SistemaEscolar.Helpers
  // Crea hash + salt
  public static void CreatePasswordHash(string password, out byte[] hash, out byte[] salt)
  {
- using (var hmac = new HMACSHA512())
- {
+ using var hmac = new HMACSHA512(); // volver a HMACSHA512 para coincidir con hashes previamente generados
  salt = hmac.Key;
  hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
  }
- }
 
  // Verifica contraseña
- public static bool VerifyPassword(string password, byte[] storedHash, byte[] storedSalt)
+ public static bool VerifyPassword(string password, byte[] hash, byte[] salt)
  {
- if (storedHash == null || storedSalt == null)
- return false;
-
- using (var hmac = new HMACSHA512(storedSalt))
- {
- var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
- if (computedHash.Length != storedHash.Length)
- return false;
-
- for (int i =0; i < computedHash.Length; i++)
- {
- if (computedHash[i] != storedHash[i])
- return false;
- }
- }
-
+ using var hmac = new HMACSHA512(salt);
+ var computed = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+ if (computed.Length != hash.Length) return false;
+ for (int i=0;i<computed.Length;i++) if (computed[i]!=hash[i]) return false;
  return true;
  }
  }

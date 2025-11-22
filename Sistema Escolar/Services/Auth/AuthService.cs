@@ -1,136 +1,94 @@
-using Microsoft.EntityFrameworkCore;
-using SistemaEscolar.Data;
+using System.Threading.Tasks;
 using SistemaEscolar.DTOs.Auth;
-using SistemaEscolar.Interfaces.Auth;
 using SistemaEscolar.Models;
-using SistemaEscolar.Models.Auth;
-using SistemaEscolar.Helpers;
+using SistemaEscolar.Data;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using SistemaEscolar.Helpers;
+using SistemaEscolar.Models.Auth;
+using System;
+using SistemaEscolar.Interfaces.Auth;
 using SistemaEscolar.Interfaces.Bitacora;
-using Microsoft.AspNetCore.Http;
 
 namespace SistemaEscolar.Services.Auth
 {
- // Implementación del servicio de autenticación
- public class AuthService : IAuthService
- {
- private readonly ApplicationDbContext _context;
- private readonly JwtHelper _jwt;
- private readonly IBitacoraService _bitacora;
- private readonly IHttpContextAccessor _http;
+    // Implementación del servicio de autenticación
+    public class AuthService : IAuthService
+    {
+        private readonly ApplicationDbContext _ctx;
+        private readonly JwtSettings _settings;
+        private readonly IBitacoraService _bitacora;
 
- public AuthService(ApplicationDbContext context, JwtHelper jwt, IBitacoraService bitacora, IHttpContextAccessor http)
- {
- _context = context;
- _jwt = jwt;
- _bitacora = bitacora;
- _http = http;
- }
+        public AuthService(ApplicationDbContext ctx, JwtSettings settings, IBitacoraService bitacora)
+        {
+            _ctx = ctx;
+            _settings = settings;
+            _bitacora = bitacora;
+        }
 
- private string Ip() => _http.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+        // Login
+        public async Task<LoginResponse?> LoginAsync(LoginRequest request)
+        {
+            var user = await _ctx.Usuarios
+                .Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol)
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
 
- // Login
- public async Task<LoginResponse?> LoginAsync(LoginRequest request)
- {
- var usuario = await _context.Usuarios
- .Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol).ThenInclude(r => r.RolPermisos).ThenInclude(rp => rp.Permiso)
- .AsSplitQuery()
- .FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user == null || !user.Activo) return null;
 
- if (usuario == null)
- return null; // no revelar detalles
+            // Validación de contraseña
+            if (!PasswordHasher.VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt)) return null;
 
- // Validación de contraseña
- if (!PasswordHasher.VerifyPassword(request.Password, usuario.PasswordHash, usuario.PasswordSalt))
- return null;
+            var roles = user.UsuarioRoles.Select(r => r.Rol.Nombre).ToList();
+            var token = JwtHelper.GenerateToken(user, roles, _ctx, _settings);
 
- var token = await GenerateJwtTokenAsync(usuario.Id);
- var refreshToken = await GenerateRefreshTokenAsync(usuario.Id);
+            // Bitácora login
+            await _bitacora.RegistrarLoginAsync(user.Id, "0.0.0.0");
 
- // Bitácora login
- await _bitacora.RegistrarLoginAsync(usuario.Id, Ip());
+            // Refresh token
+            var refresh = new RefreshToken { UsuarioId = user.Id, Token = Guid.NewGuid().ToString("N"), Expiracion = DateTime.UtcNow.AddDays(7), Revocado = false };
+            _ctx.RefreshTokens.Add(refresh);
+            await _ctx.SaveChangesAsync();
 
- var rolPrincipal = usuario.UsuarioRoles.Select(ur => ur.Rol.Nombre).FirstOrDefault() ?? string.Empty;
+            return new LoginResponse { Token = token, RefreshToken = refresh.Token, Roles = roles, Email = user.Email, NombreCompleto = user.Nombre + " " + user.Apellidos, RolPrincipal = roles.FirstOrDefault() ?? string.Empty, UsuarioId = user.Id };
+        }
 
- return new LoginResponse
- {
- Token = token,
- RefreshToken = refreshToken,
- UsuarioId = usuario.Id,
- NombreCompleto = $"{usuario.Nombre} {usuario.Apellidos}",
- Email = usuario.Email,
- RolPrincipal = rolPrincipal
- };
- }
+        public async Task<string> GenerateJwtTokenAsync(int usuarioId)
+        {
+            var user = await _ctx.Usuarios
+                .Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol)
+                .FirstOrDefaultAsync(u => u.Id == usuarioId);
 
- // Genera JWT
- public async Task<string> GenerateJwtTokenAsync(int usuarioId)
- {
- var usuario = await _context.Usuarios
- .Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol).ThenInclude(r => r.RolPermisos).ThenInclude(rp => rp.Permiso)
- .AsSplitQuery()
- .FirstOrDefaultAsync(u => u.Id == usuarioId);
+            if (user == null) return string.Empty;
 
- return _jwt.GenerateToken(usuario!);
- }
+            var roles = user.UsuarioRoles.Select(r => r.Rol.Nombre).ToList();
+            return JwtHelper.GenerateToken(user, roles, _ctx, _settings);
+        }
 
- // Crea refresh token
- private async Task<string> GenerateRefreshTokenAsync(int usuarioId)
- {
- var token = _jwt.GenerateRefreshToken();
+        public async Task<LoginResponse?> RefreshTokenAsync(RefreshTokenRequest request)
+        {
+            var rt = await _ctx.RefreshTokens
+                .Include(r => r.Usuario).ThenInclude(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol)
+                .FirstOrDefaultAsync(r => r.Token == request.RefreshToken);
 
- var entity = new RefreshToken
- {
- UsuarioId = usuarioId,
- Token = token,
- Expiracion = DateTime.UtcNow.AddDays(7),
- Revocado = false
- };
+            if (rt == null || rt.Revocado || rt.Expiracion < DateTime.UtcNow) return null;
 
- _context.RefreshTokens.Add(entity);
- await _context.SaveChangesAsync();
- return token;
- }
+            var user = rt.Usuario;
+            var roles = user.UsuarioRoles.Select(r => r.Rol.Nombre).ToList();
+            var newJwt = JwtHelper.GenerateToken(user, roles, _ctx, _settings);
 
- public async Task<LoginResponse?> RefreshTokenAsync(RefreshTokenRequest request)
- {
- var stored = await _context.RefreshTokens
- .Include(r => r.Usuario).ThenInclude(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol).ThenInclude(r => r.RolPermisos).ThenInclude(rp => rp.Permiso)
- .AsSplitQuery()
- .FirstOrDefaultAsync(r => r.Token == request.RefreshToken && !r.Revocado);
+            return new LoginResponse { Token = newJwt, RefreshToken = rt.Token, Roles = roles, Email = user.Email, NombreCompleto = user.Nombre + " " + user.Apellidos, RolPrincipal = roles.FirstOrDefault() ?? string.Empty, UsuarioId = user.Id };
+        }
 
- if (stored == null || stored.Expiracion < DateTime.UtcNow)
- return null;
+        public async Task<bool> RevokeRefreshTokenAsync(int usuarioId)
+        {
+            var tokens = _ctx.RefreshTokens.Where(r => r.UsuarioId == usuarioId && !r.Revocado).ToList();
 
- var newJwt = await GenerateJwtTokenAsync(stored.UsuarioId);
- // Bitácora refresh
- await _bitacora.RegistrarAsync(stored.UsuarioId, "RefreshToken", "Autenticacion", Ip());
+            if (!tokens.Any()) return false;
 
- var rolPrincipal = stored.Usuario.UsuarioRoles.Select(ur => ur.Rol.Nombre).FirstOrDefault() ?? string.Empty;
+            foreach (var t in tokens) { t.Revocado = true; }
 
- return new LoginResponse
- {
- Token = newJwt,
- RefreshToken = stored.Token,
- UsuarioId = stored.Usuario.Id,
- NombreCompleto = $"{stored.Usuario.Nombre} {stored.Usuario.Apellidos}",
- Email = stored.Usuario.Email,
- RolPrincipal = rolPrincipal
- };
- }
-
- public async Task<bool> RevokeRefreshTokenAsync(int usuarioId)
- {
- var tokens = await _context.RefreshTokens
- .Where(t => t.UsuarioId == usuarioId && !t.Revocado)
- .ToListAsync();
-
- foreach (var token in tokens)
- token.Revocado = true;
-
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(usuarioId, "RevokeTokens", "Autenticacion", Ip());
- return true;
- }
- }
+            await _ctx.SaveChangesAsync();
+            return true;
+        }
+    }
 }
