@@ -8,5 +8,7 @@ namespace SistemaEscolar.DTOs.Usuarios
  public int Id { get; set; }
  public string Nombre { get; set; } = string.Empty;
  public List<string> Permisos { get; set; } = new();
+ // NUEVO: cantidad de usuarios asignados
+ public int UsuariosCount { get; set; }
  }
 }

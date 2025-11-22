@@ -89,6 +89,34 @@ namespace SistemaEscolar.Data
                         new BitacoraEntry{ UsuarioId = docente1.Id, Accion="Seed: Evaluaciones iniciales", Modulo="Evaluaciones", Ip="127.0.0.1", Fecha = DateTime.UtcNow }
                     ); ctx.SaveChanges();
                 }
+                // NUEVO: asegurar permisos iniciales
+                if(!ctx.Permisos.Any())
+                {
+                    string[] permisosBase = {"Usuarios.Gestion","Cursos.Ver","Cursos.Crear","Cursos.Editar","Cursos.Eliminar","Cursos.AsignarDocente","Historial.Ver","Bitacora.Ver","Seguridad.Gestion"};
+                    foreach(var codigo in permisosBase) ctx.Permisos.Add(new Permiso{ Codigo = codigo });
+                    ctx.SaveChanges();
+                }
+                // NUEVO: rol Estudiante con permiso Historial.Ver
+                var rolEstudiante = ctx.Roles.FirstOrDefault(r=> r.Nombre=="Estudiante");
+                if(rolEstudiante==null)
+                {
+                    rolEstudiante = new Rol{ Nombre="Estudiante"};
+                    ctx.Roles.Add(rolEstudiante);
+                    ctx.SaveChanges();
+                    var permisoHistorial = ctx.Permisos.FirstOrDefault(p=> p.Codigo=="Historial.Ver");
+                    if(permisoHistorial!=null)
+                    {
+                        ctx.RolPermisos.Add(new RolPermiso{ RolId = rolEstudiante.Id, PermisoId = permisoHistorial.Id });
+                        ctx.SaveChanges();
+                    }
+                }
+                // NUEVO: asignar rol Estudiante a usuario Carlos López si existe
+                var usuarioCarlos = ctx.Usuarios.FirstOrDefault(u=> u.Email.Contains("carlos.lopez"));
+                if(usuarioCarlos!=null && !ctx.UsuarioRoles.Any(ur=> ur.UsuarioId==usuarioCarlos.Id && ur.RolId==rolEstudiante.Id))
+                {
+                    ctx.UsuarioRoles.Add(new UsuarioRol{ UsuarioId = usuarioCarlos.Id, RolId = rolEstudiante.Id });
+                    ctx.SaveChanges();
+                }
                 tx.Commit();
             }
             catch(Exception ex)

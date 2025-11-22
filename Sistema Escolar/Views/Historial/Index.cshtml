@@ -2,105 +2,119 @@
     ViewBag.Title = "Historial Académico";
     Layout = "/Views/Shared/_Layout.cshtml";
 }
-<h2>Consultar Historial</h2>
-<div class="row mb-3">
-    <div class="col-md-4">
-        <input id="busqueda" class="form-control" placeholder="Nombre, identificación o email" />
+<h2>Historial Académico</h2>
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label class="form-label">Buscar estudiante</label>
+        <input type="text" id="busqueda" class="form-control" placeholder="Nombre, identificación o email" />
+        <div id="resultados" class="list-group mt-1"></div>
     </div>
-    <div class="col-md-4">
-        <select id="estudiantes" class="form-select">
-            <option value="">Seleccione estudiante...</option>
-        </select>
-    </div>
-    <div class="col-md-2">
-        <input type="date" id="from" class="form-control" />
-    </div>
-    <div class="col-md-2">
-        <input type="date" id="to" class="form-control" />
-    </div>
-</div>
-<div class="row mb-3">
-    <div class="col-md-8">
-        <input id="cursos" class="form-control" placeholder="Códigos cursos separados por coma (MAT101,FIS101)" />
-    </div>
-    <div class="col-md-4 d-flex gap-2">
-        <button class="btn btn-secondary flex-fill" onclick="buscar()">Buscar estudiante</button>
-        <button class="btn btn-primary flex-fill" onclick="cargarHistorial()">Ver historial</button>
+    <div class="col-md-6">
+        <div class="border rounded p-2 small bg-light">
+            <strong>Instrucciones:</strong>
+            <ul class="mb-0">
+                <li>Escriba al menos3 caracteres para buscar.</li>
+                <li>Seleccione un estudiante para ver su historial.</li>
+                <li>Use filtros de fechas o cursos y presione "Aplicar".</li>
+            </ul>
+        </div>
     </div>
 </div>
-<hr />
-<div id="resumen" class="mb-3"></div>
-<canvas id="grafico" height="120"></canvas>
-<div id="contenedorHistorial" class="mt-4"></div>
+<div id="panelFiltros" class="d-none mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-2">
+            <label class="form-label">Desde</label>
+            <input type="date" id="desde" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Hasta</label>
+            <input type="date" id="hasta" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cursos (códigos separados por coma)</label>
+            <input type="text" id="cursos" class="form-control" placeholder="MAT101,INF200" />
+        </div>
+        <div class="col-md-2">
+            <button id="btnAplicar" class="btn btn-primary w-100">Aplicar</button>
+        </div>
+        <div class="col-md-2">
+            <button id="btnLimpiar" class="btn btn-secondary w-100">Limpiar</button>
+        </div>
+    </div>
+</div>
+<div id="resumen" class="mb-2"></div>
+<div id="contenedorHistorial"></div>
+<div id="graficoWrapper" class="mt-4"></div>
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let chart;
-        async function buscar() {
-            const term = document.getElementById('busqueda').value.trim();
-            if (!term) return;
-            const resp = await fetch(`/api/historial/buscar?term=${encodeURIComponent(term)}`);
-            if (!resp.ok) return;
-            const data = await resp.json();
-            const sel = document.getElementById('estudiantes');
-            sel.innerHTML = '<option value="">Seleccione estudiante...</option>';
-            data.forEach(e => sel.innerHTML += `<option value="${e.id}">${e.nombreCompleto} (${e.identificacion})</option>`);
-        }
-        async function cargarHistorial() {
-            const id = document.getElementById('estudiantes').value;
-            if (!id) return;
-            const from = document.getElementById('from').value;
-            const to = document.getElementById('to').value;
-            const cursosRaw = document.getElementById('cursos').value.trim();
-            const cursos = cursosRaw ? cursosRaw.split(',').map(c => c.trim()).filter(c => c.length>0) : [];
-            const params = new URLSearchParams();
-            if (from) params.append('from', from);
-            if (to) params.append('to', to);
-            cursos.forEach(c => params.append('cursos', c));
-            const url = params.toString() ? `/api/historial/filtrado/${id}?${params}` : `/api/historial/agrupado/${id}`;
-            const resp = await fetch(url);
-            if (!resp.ok) { alert('No encontrado'); return; }
-            const h = await resp.json();
-            document.getElementById('resumen').innerHTML = `<strong>${h.nombreCompleto}</strong> - Promedio General: ${h.promedioGeneral ?? 'N/D'}`;
-            renderTabla(h);
-            renderGrafico(h);
-        }
-        function renderTabla(h) {
+        (function(){
+            const input = document.getElementById('busqueda');
+            const lista = document.getElementById('resultados');
             const cont = document.getElementById('contenedorHistorial');
-            cont.innerHTML='';
-            h.cuatrimestres.forEach(c => {
-                let html = `<div class=\"card mb-3\"><div class=\"card-header\">${c.cuatrimestre} - Promedio: ${c.promedio ?? 'N/D'}</div>`;
-                html += '<div class="card-body"><table class="table table-sm"><thead><tr><th>Curso</th><th>Nota</th><th>Estado</th><th>Participación</th><th>Observaciones</th><th>Fecha</th></tr></thead><tbody>';
-                c.cursos.forEach(it => {
-                    html += `<tr><td>${it.curso}</td><td>${it.nota}</td><td>${it.estado}</td><td>${it.participacion}</td><td>${it.observaciones}</td><td>${it.fecha}</td></tr>`;
+            const panelFiltros = document.getElementById('panelFiltros');
+            const resumen = document.getElementById('resumen');
+            const graficoWrapper = document.getElementById('graficoWrapper');
+            const btnAplicar = document.getElementById('btnAplicar');
+            const btnLimpiar = document.getElementById('btnLimpiar');
+            let estudianteId =0;
+            let debounceTimer = null;
+            input.addEventListener('input', function(){
+                const q = this.value.trim(); lista.innerHTML=''; if(q.length<3){ return; }
+                clearTimeout(debounceTimer); debounceTimer = setTimeout(()=> buscar(q),300);
+            });
+            async function buscar(txt){
+                lista.innerHTML = '<div class="list-group-item small text-muted">Buscando...</div>';
+                try{
+                    const r = await fetch('/api/historial/buscar?term='+ encodeURIComponent(txt));
+                    if(!r.ok){ lista.innerHTML = '<div class="list-group-item text-danger">Error</div>'; return; }
+                    const json = await r.json();
+                    if(!json.length){ lista.innerHTML = '<div class="list-group-item small text-muted">Sin resultados</div>'; return; }
+                    lista.innerHTML = json.map(e=> `<button type="button" class="list-group-item list-group-item-action" data-id="${e.id}">${e.nombreCompleto} <span class="text-muted">(${e.identificacion})</span></button>`).join('');
+                    lista.querySelectorAll('button').forEach(b=> b.addEventListener('click',()=>{ estudianteId = parseInt(b.getAttribute('data-id')); lista.innerHTML=''; input.value = b.textContent.trim(); cargar(); panelFiltros.classList.remove('d-none'); }));
+                }catch(err){ lista.innerHTML = '<div class="list-group-item text-danger">'+ err.message +'</div>'; }
+            }
+            async function cargar(){
+                if(!estudianteId) return;
+                cont.innerHTML = '<div class="text-muted">Cargando historial...</div>';
+                try{
+                    const params = new URLSearchParams();
+                    const desde = document.getElementById('desde').value; if(desde) params.set('from', desde);
+                    const hasta = document.getElementById('hasta').value; if(hasta) params.set('to', hasta);
+                    const cursos = document.getElementById('cursos').value.split(',').map(c=>c.trim()).filter(c=>c); if(cursos.length) cursos.forEach(c=> params.append('cursos', c));
+                    const url = '/api/historial/'+ estudianteId + '/agrupado?'+ params.toString();
+                    const r = await fetch(url);
+                    if(!r.ok){ cont.innerHTML = '<div class="text-danger">Error al cargar</div>'; return; }
+                    const data = await r.json();
+                    render(data);
+                }catch(err){ cont.innerHTML = '<div class="text-danger">'+ err.message +'</div>'; }
+            }
+            function render(data){
+                if(!data || !data.cuatrimestres || !data.cuatrimestres.length){ cont.innerHTML = '<div class="alert alert-warning">Sin evaluaciones</div>'; graficoWrapper.innerHTML=''; resumen.innerHTML=''; return; }
+                resumen.innerHTML = `<div class="small">Estudiante: <strong>${escapeHtml(data.nombreCompleto)}</strong> | Promedio General: <strong>${data.promedioGeneral?.toFixed(2) ?? 'N/D'}</strong></div>`;
+                cont.innerHTML = data.cuatrimestres.map(c=> `<div class="mb-3"><h5>${escapeHtml(c.cuatrimestre)} <span class="badge bg-secondary">Prom: ${c.promedio?.toFixed(2) ?? 'N/D'}</span></h5><div class="table-responsive"><table class="table table-sm table-striped"><thead><tr><th>Curso</th><th>Nota</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${c.cursos.map(it=> `<tr><td>${escapeHtml(it.curso)}</td><td>${it.nota.toFixed(2)}</td><td>${escapeHtml(it.estado)}</td><td>${escapeHtml(it.fecha)}</td></tr>`).join('')}</tbody></table></div></div>`).join('');
+                // Grafico simple de promedio por cuatrimestre
+                const labels = data.cuatrimestres.map(x=> x.cuatrimestre);
+                const valores = data.cuatrimestres.map(x=> x.promedio ??0);
+                graficoWrapper.innerHTML = `<canvas id="grafico" height="120"></canvas>`;
+                drawChart(labels, valores);
+            }
+            function drawChart(labels, values){
+                if(!window.Chart){ graficoWrapper.insertAdjacentHTML('beforeend', '<div class="text-muted small">Chart.js no cargado</div>'); return; }
+                new Chart(document.getElementById('grafico'), {
+                    type:'bar',
+                    data:{
+                        labels,
+                        datasets:[{ label:'Promedio por cuatrimestre', data: values, backgroundColor:'#0d6efd' }]
+                    },
+                    options:{
+                        scales:{ y:{ beginAtZero:true } }
+                    }
                 });
-                html += '</tbody></table></div></div>';
-                cont.innerHTML += html;
-            });
-        }
-        async function renderGrafico(h) {
-            const labels = h.cuatrimestres.map(c => c.cuatrimestre);
-            const data = h.cuatrimestres.map(c => c.promedio ??0);
-            const ctx = document.getElementById('grafico').getContext('2d');
-            if (chart) chart.destroy();
-            chart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels,
-                    datasets: [{ label: 'Promedio por Cuatrimestre', data, borderColor: '#0d6efd', backgroundColor:'rgba(13,110,253,.2)', tension:.3, fill:true }]
-                },
-                options: {
-                    responsive:true,
-                    interaction:{mode:'index',intersect:false},
-                    plugins:{legend:{display:true}},
-                    scales:{ y:{ beginAtZero:true } }
-                }
-            });
-        }
-        // Actualización automática simulada cada60s (nuevo dato podría venir por polling)
-        setInterval(() => {
-            const id = document.getElementById('estudiantes').value;
-            if (id) cargarHistorial();
-        },60000);
+            }
+            btnAplicar.addEventListener('click', cargar);
+            btnLimpiar.addEventListener('click', ()=>{ document.getElementById('desde').value=''; document.getElementById('hasta').value=''; document.getElementById('cursos').value=''; cargar(); });
+            function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+        })();
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 }

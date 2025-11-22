@@ -60,6 +60,12 @@ namespace SistemaEscolar.Services.Usuarios
  // Crear usuario
  public async Task<bool> CreateAsync(UsuarioCreateDTO dto)
  {
+ if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
+ return false;
+
+ if (await _context.Usuarios.AnyAsync(u => u.Email == dto.Email))
+ return false;
+
  PasswordHasher.CreatePasswordHash(dto.Password, out var hash, out var salt);
 
  var usuario = new Usuario
@@ -118,6 +124,14 @@ namespace SistemaEscolar.Services.Usuarios
  // Guardar nuevos roles
  foreach (var rolId in dto.RolesIds)
  _context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = id, RolId = rolId });
+
+ // Cambio de contraseña si se envía NewPassword
+ if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+ {
+ PasswordHasher.CreatePasswordHash(dto.NewPassword, out var hash, out var salt);
+ usuario.PasswordHash = hash;
+ usuario.PasswordSalt = salt;
+ }
 
  await _context.SaveChangesAsync();
 

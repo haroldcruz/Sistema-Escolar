@@ -2,56 +2,49 @@
 @{ ViewBag.Title = "Crear Usuario"; Layout = "/Views/Shared/_Layout.cshtml"; var roles = ViewBag.Roles as IEnumerable<SistemaEscolar.Models.Rol>; }
 <h2>Crear Usuario</h2>
 <form method="post">
- <div class="row">
- <div class="col-md-6 mb-2">
+ <div class="row g-3">
+ <div class="col-md-6">
  <label class="form-label">Nombre</label>
  <input asp-for="Nombre" class="form-control" />
  <span asp-validation-for="Nombre" class="text-danger"></span>
  </div>
- <div class="col-md-6 mb-2">
+ <div class="col-md-6">
  <label class="form-label">Apellidos</label>
  <input asp-for="Apellidos" class="form-control" />
  <span asp-validation-for="Apellidos" class="text-danger"></span>
  </div>
- </div>
- <div class="row">
- <div class="col-md-6 mb-2">
+ <div class="col-md-6">
  <label class="form-label">Email</label>
  <input asp-for="Email" class="form-control" />
  <span asp-validation-for="Email" class="text-danger"></span>
  </div>
- <div class="col-md-6 mb-2">
+ <div class="col-md-6">
  <label class="form-label">Identificación</label>
  <input asp-for="Identificacion" class="form-control" />
  <span asp-validation-for="Identificacion" class="text-danger"></span>
  </div>
- </div>
- <div class="row">
- <div class="col-md-6 mb-2">
+ <div class="col-md-6">
  <label class="form-label">Password</label>
  <input asp-for="Password" type="password" class="form-control" />
  <span asp-validation-for="Password" class="text-danger"></span>
  </div>
- <div class="col-md-6 mb-2">
- <label class="form-label">Confirmar Password</label>
- <input asp-for="ConfirmPassword" type="password" class="form-control" />
- <span asp-validation-for="ConfirmPassword" class="text-danger"></span>
- </div>
- </div>
- <div class="mb-2">
+ <div class="col-md-6">
  <label class="form-label">Roles</label>
- <div class="row">
- @foreach(var r in roles){
- <div class="col-md-4">
+ <div class="border rounded p-2" style="max-height:200px; overflow:auto;">
+ @if(roles!=null){
+ foreach(var r in roles){
  <div class="form-check">
  <input class="form-check-input" type="checkbox" name="RolesIds" value="@r.Id" id="rol_@r.Id" />
  <label class="form-check-label" for="rol_@r.Id">@r.Nombre</label>
  </div>
- </div>
+ }
  }
  </div>
  </div>
+ <div class="col-12">
  <button class="btn btn-primary">Guardar</button>
- <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+ <a href="/Usuarios" class="btn btn-secondary">Cancelar</a>
+ </div>
+ </div>
 </form>
-@section Scripts{<partial name="_ValidationScriptsPartial" />}
+@section Scripts {<partial name="_ValidationScriptsPartial" />}

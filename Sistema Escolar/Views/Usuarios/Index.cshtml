@@ -1,20 +1,34 @@
-@{
-    ViewBag.Title = "Usuarios";
-    Layout = "/Views/Shared/_Layout.cshtml";
-}
+@model IEnumerable<SistemaEscolar.DTOs.Usuarios.UsuarioDTO>
+@{ ViewBag.Title = "Usuarios"; Layout = "/Views/Shared/_Layout.cshtml"; }
 <h2>Usuarios</h2>
-<table class="table table-bordered" id="tablaUsuarios">
-    <thead class="table-dark">
-        <tr>
-      <th>Id</th>
-   <th>Nombre</th>
-   <th>Email</th>
-   <th>Identificación</th>
- <th>Roles</th>
-   </tr>
-    </thead>
-    <tbody></tbody>
+<div class="mb-3">
+ <a class="btn btn-sm btn-primary" href="/Usuarios/Crear">Crear Usuario</a>
+</div>
+<table class="table table-sm table-striped align-middle" id="tablaUsuarios">
+ <thead class="table-dark">
+ <tr><th>Id</th><th>Nombre</th><th>Identificación</th><th>Email</th><th>Roles</th><th style="width:150px">Acciones</th></tr>
+ </thead>
+ <tbody>
+ @if(Model!=null){
+ foreach(var u in Model){
+ <tr>
+ <td>@u.Id</td>
+ <td>@u.NombreCompleto</td>
+ <td>@u.Identificacion</td>
+ <td>@u.Email</td>
+ <td>
+ @if(u.Roles.Any()){
+ <span class="small">@string.Join(", ", u.Roles)</span>
+ } else { <span class="text-muted small">(sin roles)</span> }
+ </td>
+ <td>
+ <a class="btn btn-sm btn-outline-secondary" href="/Usuarios/Editar/@u.Id">Editar</a>
+ <form method="post" action="/Usuarios/Eliminar/@u.Id" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
+ <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+ </form>
+ </td>
+ </tr>
+ }
+ }
+ </tbody>
 </table>
-@section Scripts {
-    <script src="~/js/usuarios.js"></script>
-}

@@ -11,5 +11,7 @@ namespace SistemaEscolar.DTOs.Usuarios
         public string Email { get; set; } = string.Empty;
         public string Identificacion { get; set; } = string.Empty;
         public List<int> RolesIds { get; set; } = new();
+        // NUEVO: contraseña nueva opcional
+        public string? NewPassword { get; set; }
     }
 }

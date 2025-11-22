@@ -4,9 +4,12 @@
  Layout = "/Views/Shared/_Layout.cshtml";
 }
 <h2>Roles y Permisos</h2>
-<table class="table table-sm table-striped">
+<div class="mb-3">
+ <a class="btn btn-sm btn-primary" href="/Seguridad/Roles/crear">Crear Rol</a>
+</div>
+<table class="table table-sm table-striped align-middle">
  <thead class="table-dark">
- <tr><th>Rol</th><th>Permisos</th></tr>
+ <tr><th>Rol</th><th>Permisos</th><th>Usuarios</th><th style="width:160px">Acciones</th></tr>
  </thead>
  <tbody>
  @foreach(var r in Model){
@@ -14,12 +17,20 @@
  <td>@r.Nombre</td>
  <td>
  @if(r.Permisos.Any()){
- <ul class="mb-0">
+ <ul class="mb-0 small">
  @foreach(var p in r.Permisos){<li>@p</li>}
  </ul>
- } else { <span class="text-muted">(sin permisos)</span> }
+ } else { <span class="text-muted small">(sin permisos)</span> }
+ </td>
+ <td>@r.UsuariosCount</td>
+ <td>
+ <a class="btn btn-sm btn-outline-secondary" href="/Seguridad/Roles/editar/@r.Id">Editar</a>
+ <form method="post" action="/Seguridad/Roles/eliminar/@r.Id" class="d-inline" onsubmit="return confirm('¿Eliminar rol?');">
+ <button class="btn btn-sm btn-outline-danger" @(r.UsuariosCount>0?"disabled":"")>Eliminar</button>
+ </form>
  </td>
  </tr>
  }
  </tbody>
 </table>
+<p class="text-muted small">Nota: No se puede eliminar un rol que tenga usuarios asignados.</p>
