@@ -1,0 +1,50 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+</div>
+
+@{
+ ViewBag.Title = "Inicio";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var isAuth = User?.Identity?.IsAuthenticated ?? false;
+ var nombre = User?.Identity?.Name ?? "";
+}
+<div class="p-5 bg-light rounded-3">
+ @if (isAuth)
+ {
+ <h1 class="display-5">Bienvenido @nombre</h1>
+ <p class="lead">Este es su Sistema de Gestión Escolar.</p>
+ <hr />
+ <h5>Accesos rápidos</h5>
+ <div class="row g-3 mt-2">
+ <div class="col-sm-6 col-md-3">
+ <a class="btn btn-outline-primary w-100" href="/Cursos">Cursos</a>
+ </div>
+ <div class="col-sm-6 col-md-3">
+ <a class="btn btn-outline-secondary w-100" href="/Historial">Historial Académico</a>
+ </div>
+ @if (User.HasClaim("permiso","Usuarios.Gestion"))
+ {
+ <div class="col-sm-6 col-md-3">
+ <a class="btn btn-outline-success w-100" href="/Usuarios">Usuarios</a>
+ </div>
+ }
+ @if (User.HasClaim("permiso","Bitacora.Ver"))
+ {
+ <div class="col-sm-6 col-md-3">
+ <a class="btn btn-outline-dark w-100" href="/Bitacora">Bitácora</a>
+ </div>
+ }
+ </div>
+ }
+ else
+ {
+ <h1 class="display-5">Sistema de Gestión Escolar</h1>
+ <p class="lead">Por favor inicie sesión para acceder a sus funcionalidades.</p>
+ <a class="btn btn-primary" href="/Auth/Login">Iniciar Sesión</a>
+ }
+</div>

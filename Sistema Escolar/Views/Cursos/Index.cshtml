@@ -1,0 +1,37 @@
+@{
+    ViewBag.Title = "Cursos";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Cursos</h2>
+<table class="table table-bordered" id="tablaCursos">
+    <thead class="table-dark">
+    <tr>
+   <th>Código</th>
+        <th>Nombre</th>
+        <th>Créditos</th>
+        <th>Cuatrimestre</th>
+       <th>Docentes</th>
+       <th>Acciones</th>
+   </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+@section Scripts {
+    <script>
+ async function cargarCursos(){
+ const r = await fetch('/api/cursos');
+ if(!r.ok) return; const data = await r.json();
+ const tbody = document.querySelector('#tablaCursos tbody');
+ tbody.innerHTML='';
+ data.forEach(c=>{
+ tbody.innerHTML += `<tr><td>${c.codigo}</td><td>${c.nombre}</td><td>${c.creditos}</td><td>${c.cuatrimestre??''}</td><td>${(c.docentes||[]).join('<br/>')}</td><td><button class='btn btn-sm btn-danger' onclick='confirmarEliminar(${c.id},"${c.nombre}")'>Eliminar</button></td></tr>`;
+ });
+ }
+ async function confirmarEliminar(id,nombre){
+ if(!confirm(`¿Seguro que desea eliminar el curso "${nombre}"? Esta acción no se puede deshacer.`)) return;
+ const resp = await fetch(`/api/cursos/${id}`,{ method:'DELETE'});
+ if(resp.ok){ alert('Curso eliminado'); cargarCursos(); } else { alert('No se pudo eliminar (verifique que no tenga estudiantes)'); }
+ }
+ cargarCursos();
+ </script>
+}

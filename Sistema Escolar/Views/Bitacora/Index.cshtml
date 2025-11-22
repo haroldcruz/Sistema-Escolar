@@ -1,0 +1,84 @@
+@{
+    ViewBag.Title = "Bitácora del Sistema";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Bitácora</h2>
+<div class="row g-2 mb-3">
+    <div class="col-md-3"><input id="usuario" class="form-control" placeholder="Usuario" /></div>
+    <div class="col-md-2"><input id="modulo" class="form-control" placeholder="Módulo" /></div>
+    <div class="col-md-2"><input id="accion" class="form-control" placeholder="Acción" /></div>
+    <div class="col-md-2"><input id="desde" type="date" class="form-control" /></div>
+    <div class="col-md-2"><input id="hasta" type="date" class="form-control" /></div>
+    <div class="col-md-1"><button class="btn btn-primary w-100" onclick="buscar(1)">Buscar</button></div>
+</div>
+<table class="table table-sm table-striped" id="tabla">
+    <thead class="table-dark">
+        <tr>
+            <th onclick="ordenar('usuario')">Usuario</th>
+            <th onclick="ordenar('accion')">Acción</th>
+            <th onclick="ordenar('modulo')">Módulo</th>
+            <th>IP</th>
+            <th onclick="ordenar('fecha')">Fecha</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<nav>
+    <ul class="pagination" id="paginacion"></ul>
+</nav>
+@section Scripts {
+    <script>
+        let paginaActual =1;
+        let ordenCampo = 'fecha';
+        let ordenAsc = false;
+        async function buscar(page){
+            paginaActual = page;
+            const params = new URLSearchParams();
+            params.append('page', page);
+            params.append('pageSize',20);
+            const usuario = document.getElementById('usuario').value.trim();
+            const modulo = document.getElementById('modulo').value.trim();
+            const accion = document.getElementById('accion').value.trim();
+            if(usuario) params.append('usuario', usuario);
+            if(modulo) params.append('modulo', modulo);
+            if(accion) params.append('accion', accion);
+            const resp = await fetch(`/api/bitacora/paged?${params}`);
+            if(!resp.ok) return;
+            let data = await resp.json();
+            // Filtro por fechas en cliente
+            const desde = document.getElementById('desde').value;
+            const hasta = document.getElementById('hasta').value;
+            if(desde) data = data.filter(r => r.fecha >= desde);
+            if(hasta) data = data.filter(r => r.fecha <= hasta + '23:59');
+            // Orden
+            data.sort((a,b)=>{
+                let va=a[ordenCampo]; let vb=b[ordenCampo];
+                if(ordenCampo==='fecha'){ va = new Date(va); vb = new Date(vb); }
+                if(va<vb) return ordenAsc? -1:1;
+                if(va>vb) return ordenAsc?1:-1;
+                return 0;
+            });
+            renderTabla(data);
+            renderPaginacion(data.length>=20); // heurística
+        }
+        function renderTabla(data){
+            const tbody=document.querySelector('#tabla tbody');
+            tbody.innerHTML='';
+            data.forEach(r=>{
+                tbody.innerHTML += `<tr><td>${r.usuario}</td><td>${r.accion}</td><td>${r.modulo}</td><td>${r.ip}</td><td>${r.fecha}</td></tr>`;
+            });
+        }
+        function renderPaginacion(hasNext){
+            const ul=document.getElementById('paginacion');
+            ul.innerHTML='';
+            const prev = `<li class="page-item ${paginaActual===1?'disabled':''}"><a class="page-link" href="#" onclick="if(paginaActual>1) buscar(paginaActual-1)">«</a></li>`;
+            const next = `<li class="page-item ${!hasNext?'disabled':''}"><a class="page-link" href="#" onclick="if(hasNext) buscar(paginaActual+1)">»</a></li>`;
+            ul.innerHTML = prev + `<li class="page-item active"><span class="page-link">${paginaActual}</span></li>` + next;
+        }
+        function ordenar(campo){
+            if(ordenCampo===campo) ordenAsc=!ordenAsc; else { ordenCampo=campo; ordenAsc=true; }
+            buscar(paginaActual);
+        }
+        buscar(1);
+    </script>
+}

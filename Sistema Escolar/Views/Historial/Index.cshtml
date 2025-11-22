@@ -1,0 +1,106 @@
+@{
+    ViewBag.Title = "Historial Académico";
+    Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Consultar Historial</h2>
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input id="busqueda" class="form-control" placeholder="Nombre, identificación o email" />
+    </div>
+    <div class="col-md-4">
+        <select id="estudiantes" class="form-select">
+            <option value="">Seleccione estudiante...</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <input type="date" id="from" class="form-control" />
+    </div>
+    <div class="col-md-2">
+        <input type="date" id="to" class="form-control" />
+    </div>
+</div>
+<div class="row mb-3">
+    <div class="col-md-8">
+        <input id="cursos" class="form-control" placeholder="Códigos cursos separados por coma (MAT101,FIS101)" />
+    </div>
+    <div class="col-md-4 d-flex gap-2">
+        <button class="btn btn-secondary flex-fill" onclick="buscar()">Buscar estudiante</button>
+        <button class="btn btn-primary flex-fill" onclick="cargarHistorial()">Ver historial</button>
+    </div>
+</div>
+<hr />
+<div id="resumen" class="mb-3"></div>
+<canvas id="grafico" height="120"></canvas>
+<div id="contenedorHistorial" class="mt-4"></div>
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let chart;
+        async function buscar() {
+            const term = document.getElementById('busqueda').value.trim();
+            if (!term) return;
+            const resp = await fetch(`/api/historial/buscar?term=${encodeURIComponent(term)}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+            const sel = document.getElementById('estudiantes');
+            sel.innerHTML = '<option value="">Seleccione estudiante...</option>';
+            data.forEach(e => sel.innerHTML += `<option value="${e.id}">${e.nombreCompleto} (${e.identificacion})</option>`);
+        }
+        async function cargarHistorial() {
+            const id = document.getElementById('estudiantes').value;
+            if (!id) return;
+            const from = document.getElementById('from').value;
+            const to = document.getElementById('to').value;
+            const cursosRaw = document.getElementById('cursos').value.trim();
+            const cursos = cursosRaw ? cursosRaw.split(',').map(c => c.trim()).filter(c => c.length>0) : [];
+            const params = new URLSearchParams();
+            if (from) params.append('from', from);
+            if (to) params.append('to', to);
+            cursos.forEach(c => params.append('cursos', c));
+            const url = params.toString() ? `/api/historial/filtrado/${id}?${params}` : `/api/historial/agrupado/${id}`;
+            const resp = await fetch(url);
+            if (!resp.ok) { alert('No encontrado'); return; }
+            const h = await resp.json();
+            document.getElementById('resumen').innerHTML = `<strong>${h.nombreCompleto}</strong> - Promedio General: ${h.promedioGeneral ?? 'N/D'}`;
+            renderTabla(h);
+            renderGrafico(h);
+        }
+        function renderTabla(h) {
+            const cont = document.getElementById('contenedorHistorial');
+            cont.innerHTML='';
+            h.cuatrimestres.forEach(c => {
+                let html = `<div class=\"card mb-3\"><div class=\"card-header\">${c.cuatrimestre} - Promedio: ${c.promedio ?? 'N/D'}</div>`;
+                html += '<div class="card-body"><table class="table table-sm"><thead><tr><th>Curso</th><th>Nota</th><th>Estado</th><th>Participación</th><th>Observaciones</th><th>Fecha</th></tr></thead><tbody>';
+                c.cursos.forEach(it => {
+                    html += `<tr><td>${it.curso}</td><td>${it.nota}</td><td>${it.estado}</td><td>${it.participacion}</td><td>${it.observaciones}</td><td>${it.fecha}</td></tr>`;
+                });
+                html += '</tbody></table></div></div>';
+                cont.innerHTML += html;
+            });
+        }
+        async function renderGrafico(h) {
+            const labels = h.cuatrimestres.map(c => c.cuatrimestre);
+            const data = h.cuatrimestres.map(c => c.promedio ??0);
+            const ctx = document.getElementById('grafico').getContext('2d');
+            if (chart) chart.destroy();
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{ label: 'Promedio por Cuatrimestre', data, borderColor: '#0d6efd', backgroundColor:'rgba(13,110,253,.2)', tension:.3, fill:true }]
+                },
+                options: {
+                    responsive:true,
+                    interaction:{mode:'index',intersect:false},
+                    plugins:{legend:{display:true}},
+                    scales:{ y:{ beginAtZero:true } }
+                }
+            });
+        }
+        // Actualización automática simulada cada60s (nuevo dato podría venir por polling)
+        setInterval(() => {
+            const id = document.getElementById('estudiantes').value;
+            if (id) cargarHistorial();
+        },60000);
+    </script>
+}
