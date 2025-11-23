@@ -1,0 +1,74 @@
+@{
+ ViewBag.Title = "Registrar Evaluación";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<div class="row">
+ <div class="col-md-6">
+ <h4>Buscar estudiante</h4>
+ <input id="q" class="form-control" placeholder="Nombre, apellido o identificación" />
+ <div id="results" class="list-group mt-2"></div>
+ </div>
+ <div class="col-md-6">
+ <h4>Evaluación</h4>
+ <div id="selected" style="display:none">
+ <p><strong id="estNombre"></strong> <span id="estIdent"></span></p>
+ <div class="mb-2">
+ <label>Matícula / Curso</label>
+ <select id="matricula" class="form-select"></select>
+ </div>
+ <div class="mb-2">
+ <label>Nota (0-100)</label>
+ <input id="nota" type="number" min="0" max="100" step="0.01" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label>Participación</label>
+ <input id="participacion" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label>Estado</label>
+ <select id="estado" class="form-select"><option>Aprobado</option><option>Reprobado</option></select>
+ </div>
+ <div class="mb-2">
+ <label>Observaciones</label>
+ <textarea id="obs" class="form-control"></textarea>
+ </div>
+ <div id="msg" class="mt-2"></div>
+ <button id="guardar" class="btn btn-primary">Guardar Evaluación</button>
+ </div>
+ </div>
+</div>
+@section Scripts{
+ <script>
+ let timeout=null;
+ document.getElementById('q').addEventListener('input', function(){
+ clearTimeout(timeout);
+ const v = this.value.trim();
+ if(!v){ document.getElementById('results').innerHTML=''; return; }
+ timeout = setTimeout(async ()=>{
+ const r = await fetch(`/Evaluaciones/BuscarEstudiantes?q=${encodeURIComponent(v)}`);
+ if(!r.ok) return;
+ const json = await r.json();
+ const res = document.getElementById('results'); res.innerHTML='';
+ json.forEach(s=>{ const a = document.createElement('a'); a.href='#'; a.className='list-group-item list-group-item-action'; a.innerText = s.nombre + ' (' + (s.identificacion||'') +')'; a.dataset.id = s.id; a.dataset.ident = s.identificacion; a.addEventListener('click', ev => selectStudent(s)); res.appendChild(a); });
+ },300);
+ });
+ async function selectStudent(s){
+ document.getElementById('selected').style.display='block';
+ document.getElementById('estNombre').innerText = s.nombre;
+ document.getElementById('estIdent').innerText = s.ident;
+ // cargar matriculas
+ const r = await fetch(`/Evaluaciones/MatriculasDeEstudiante?estudianteId=${s.id}`);
+ const m = await r.json();
+ const sel = document.getElementById('matricula'); sel.innerHTML='';
+ m.forEach(x=>{ const opt = document.createElement('option'); opt.value = x.id; opt.innerText = x.curso + ' - ' + x.cuatrimestre; sel.appendChild(opt); });
+ }
+ document.getElementById('guardar').addEventListener('click', async ()=>{
+ const dto = { MatriculaId: parseInt(document.getElementById('matricula').value), Nota: parseFloat(document.getElementById('nota').value), Participacion: document.getElementById('participacion').value, Estado: document.getElementById('estado').value, Observaciones: document.getElementById('obs').value };
+ const r = await fetch('/Evaluaciones/Guardar', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(dto) });
+ const res = document.getElementById('msg'); res.className='';
+ if(r.ok){ const j = await r.json(); res.className='alert alert-success'; res.innerText = j.message; // mostrar resumen
+ res.innerHTML += `<div class="small mt-2">Nota: ${j.evaluacion.nota} | Estado: ${j.evaluacion.estado}</div>`; }
+ else { const j = await r.json(); res.className='alert alert-danger'; res.innerText = j.message || 'Error'; }
+ });
+ </script>
+}

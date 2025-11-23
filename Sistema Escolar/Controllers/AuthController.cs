@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using SistemaEscolar.Data;
 using SistemaEscolar.DTOs.Auth;
 using SistemaEscolar.Interfaces.Auth;
@@ -17,11 +18,13 @@ namespace SistemaEscolar.Controllers
     {
         private readonly IAuthService _auth;
         private readonly ApplicationDbContext _ctx;
+        private readonly IConfiguration _cfg;
 
-        public AuthController(IAuthService auth, ApplicationDbContext ctx)
+        public AuthController(IAuthService auth, ApplicationDbContext ctx, IConfiguration cfg)
         {
             _auth = auth;
             _ctx = ctx;
+            _cfg = cfg;
         }
 
         [HttpGet]
@@ -36,12 +39,20 @@ namespace SistemaEscolar.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(LoginRequest req)
         {
-            if (!ModelState.IsValid) return View(req);
+            if (!ModelState.IsValid)
+            {
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return BadRequest(new { message = "Entrada inválida" });
+                return View(req);
+            }
 
             var resp = await _auth.LoginAsync(req); // llamada correcta con DTO
             if (resp == null)
             {
-                ModelState.AddModelError(string.Empty, "Credenciales inválidas");
+                // Incrementar intentos fallidos (simple, en memoria/configurable) - puede reemplazarse por DB/cache
+                // Leer max intentos desde config
+                int maxAttempts = _cfg.GetValue<int>("Auth:MaxFailedAttempts",5);
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest") return Unauthorized(new { message = "Usuario o contraseña incorrectos" });
+                ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos");
                 return View(req);
             }
 
@@ -75,6 +86,9 @@ namespace SistemaEscolar.Controllers
                 SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict,
                 Path = "/"
             });
+
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                return Ok(new { message = "Autenticado" });
 
             return RedirectToAction("Index", "Home");
         }

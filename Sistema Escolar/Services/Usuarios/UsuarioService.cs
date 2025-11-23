@@ -2,157 +2,158 @@ using Microsoft.EntityFrameworkCore;
 using SistemaEscolar.Data;
 using SistemaEscolar.DTOs.Usuarios;
 using SistemaEscolar.Interfaces.Usuarios;
-using SistemaEscolar.Models;
-using SistemaEscolar.Helpers;
-using System.Linq;
 using SistemaEscolar.Interfaces.Bitacora;
+using SistemaEscolar.Models;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using System;
 
 namespace SistemaEscolar.Services.Usuarios
 {
- // Implementación del servicio de usuarios
  public class UsuarioService : IUsuarioService
  {
- private readonly ApplicationDbContext _context;
+ private readonly ApplicationDbContext _ctx;
  private readonly IBitacoraService _bitacora;
 
- public UsuarioService(ApplicationDbContext context, IBitacoraService bitacora)
+ public UsuarioService(ApplicationDbContext ctx, IBitacoraService bitacora)
  {
- _context = context;
+ _ctx = ctx;
  _bitacora = bitacora;
  }
 
- // Lista de usuarios
  public async Task<IEnumerable<UsuarioDTO>> GetAllAsync()
  {
- return await _context.Usuarios
- .Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol)
- .Select(u => new UsuarioDTO
+ var users = await _ctx.Usuarios
+ .Include(u => u.UsuarioRoles)
+ .ThenInclude(ur => ur.Rol)
+ .AsNoTracking()
+ .ToListAsync();
+
+ return users.Select(u => new UsuarioDTO
  {
  Id = u.Id,
- NombreCompleto = $"{u.Nombre} {u.Apellidos}",
+ NombreCompleto = (u.Nombre + " " + u.Apellidos).Trim(),
  Email = u.Email,
- Identificacion = u.Identificacion,
- Roles = u.UsuarioRoles.Select(r => r.Rol.Nombre).ToList()
- })
- .ToListAsync();
+ Identificacion = u.Identificacion ?? string.Empty,
+ Roles = u.UsuarioRoles?.Select(x => x.Rol?.Nombre ?? string.Empty).Where(s => !string.IsNullOrEmpty(s)).ToList() ?? new List<string>()
+ }).ToList();
  }
 
- // Usuario por Id
  public async Task<UsuarioDTO> GetByIdAsync(int id)
  {
- var u = await _context.Usuarios
- .Include(x => x.UsuarioRoles).ThenInclude(r => r.Rol)
+ var u = await _ctx.Usuarios
+ .Include(x => x.UsuarioRoles).ThenInclude(ur => ur.Rol)
+ .AsNoTracking()
  .FirstOrDefaultAsync(x => x.Id == id);
-
- if (u == null)
- return null!;
+ if (u == null) return null!;
 
  return new UsuarioDTO
  {
  Id = u.Id,
- NombreCompleto = $"{u.Nombre} {u.Apellidos}",
+ NombreCompleto = (u.Nombre + " " + u.Apellidos).Trim(),
  Email = u.Email,
- Identificacion = u.Identificacion,
- Roles = u.UsuarioRoles.Select(r => r.Rol.Nombre).ToList()
+ Identificacion = u.Identificacion ?? string.Empty,
+ Roles = u.UsuarioRoles?.Select(x => x.Rol?.Nombre ?? string.Empty).Where(s => !string.IsNullOrEmpty(s)).ToList() ?? new List<string>()
  };
  }
 
- // Crear usuario
  public async Task<bool> CreateAsync(UsuarioCreateDTO dto)
  {
- if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Password))
- return false;
+ if (dto == null) return false;
+ if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Nombre)) return false;
 
- if (await _context.Usuarios.AnyAsync(u => u.Email == dto.Email))
- return false;
+ // Evitar duplicados por email
+ if (await _ctx.Usuarios.AnyAsync(u => u.Email == dto.Email)) return false;
 
- PasswordHasher.CreatePasswordHash(dto.Password, out var hash, out var salt);
-
- var usuario = new Usuario
+ var user = new Usuario
  {
- Nombre = dto.Nombre,
- Apellidos = dto.Apellidos,
- Identificacion = dto.Identificacion,
- Email = dto.Email,
- PasswordHash = hash,
- PasswordSalt = salt,
- Activo = true,
- FechaCreacion = DateTime.UtcNow
+ Nombre = dto.Nombre?.Trim() ?? string.Empty,
+ Apellidos = dto.Apellidos?.Trim() ?? string.Empty,
+ Email = dto.Email.Trim(),
+ Identificacion = dto.Identificacion?.Trim() ?? string.Empty,
  };
 
- _context.Add(usuario);
- await _context.SaveChangesAsync();
+ _ctx.Usuarios.Add(user);
+ await _ctx.SaveChangesAsync();
 
- // Asignar roles
- foreach (var rolId in dto.RolesIds)
+ // Asignar roles si vienen
+ if (dto.RolesIds != null && dto.RolesIds.Any())
  {
- _context.UsuarioRoles.Add(new UsuarioRol
+ foreach (var rid in dto.RolesIds.Distinct())
  {
- UsuarioId = usuario.Id,
- RolId = rolId
- });
+ if (await _ctx.Roles.AnyAsync(r => r.Id == rid))
+ {
+ _ctx.UsuarioRoles.Add(new UsuarioRol { UsuarioId = user.Id, RolId = rid });
+ }
+ }
+ await _ctx.SaveChangesAsync();
  }
 
- await _context.SaveChangesAsync();
-
- // Bitácora: creación con roles
- var rolesStr = string.Join(",", dto.RolesIds);
- await _bitacora.RegistrarAsync(usuario.Id, $"Asignación inicial roles [{rolesStr}]", "Usuarios", "0.0.0.0");
+ // Registrar en bitácora (usuarioId desconocido desde aquí)
+ try
+ {
+ await _bitacora.RegistrarAsync(0, $"Crear usuario {user.Email}", "Usuarios", string.Empty);
+ }
+ catch { }
 
  return true;
  }
 
- // Actualizar usuario
  public async Task<bool> UpdateAsync(int id, UsuarioUpdateDTO dto)
  {
- var usuario = await _context.Usuarios.FindAsync(id);
- if (usuario == null)
- return false;
+ if (dto == null) return false;
+ var user = await _ctx.Usuarios.Include(u => u.UsuarioRoles).FirstOrDefaultAsync(u => u.Id == id);
+ if (user == null) return false;
 
- usuario.Nombre = dto.Nombre;
- usuario.Apellidos = dto.Apellidos;
- usuario.Email = dto.Email;
- usuario.Identificacion = dto.Identificacion;
+ // Actualizar datos
+ user.Nombre = dto.Nombre?.Trim() ?? user.Nombre;
+ user.Apellidos = dto.Apellidos?.Trim() ?? user.Apellidos;
+ user.Email = dto.Email?.Trim() ?? user.Email;
+ user.Identificacion = dto.Identificacion?.Trim() ?? user.Identificacion;
 
- // Roles actuales para bitácora
- var prevRoles = await _context.UsuarioRoles.Where(r => r.UsuarioId == id).Select(r => r.RolId).ToListAsync();
+ // Actualizar roles: sincronizar
+ var prev = user.UsuarioRoles.Select(x => x.RolId).ToList();
+ var incoming = dto.RolesIds ?? new List<int>();
 
- // Remover roles previos
- var roles = _context.UsuarioRoles.Where(r => r.UsuarioId == id);
- _context.UsuarioRoles.RemoveRange(roles);
+ var toRemove = user.UsuarioRoles.Where(ur => !incoming.Contains(ur.RolId)).ToList();
+ if (toRemove.Any()) _ctx.UsuarioRoles.RemoveRange(toRemove);
 
- // Guardar nuevos roles
- foreach (var rolId in dto.RolesIds)
- _context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = id, RolId = rolId });
-
- // Cambio de contraseña si se envía NewPassword
- if (!string.IsNullOrWhiteSpace(dto.NewPassword))
+ var toAdd = incoming.Where(rid => !prev.Contains(rid)).Distinct();
+ foreach (var rid in toAdd)
  {
- PasswordHasher.CreatePasswordHash(dto.NewPassword, out var hash, out var salt);
- usuario.PasswordHash = hash;
- usuario.PasswordSalt = salt;
+ if (await _ctx.Roles.AnyAsync(r => r.Id == rid))
+ _ctx.UsuarioRoles.Add(new UsuarioRol { UsuarioId = user.Id, RolId = rid });
  }
 
- await _context.SaveChangesAsync();
+ await _ctx.SaveChangesAsync();
 
- // Bitácora diferencias
- var nuevos = dto.RolesIds.Except(prevRoles);
- var removidos = prevRoles.Except(dto.RolesIds);
- var cambio = $"Roles añadidos: [{string.Join(',', nuevos)}]; Roles removidos: [{string.Join(',', removidos)}]";
- await _bitacora.RegistrarAsync(id, cambio, "Usuarios", "0.0.0.0");
+ // Bitácora
+ try
+ {
+ await _bitacora.RegistrarAsync(0, $"Actualizar usuario {user.Email}", "Usuarios", string.Empty);
+ }
+ catch { }
 
  return true;
  }
 
  public async Task<bool> DeleteAsync(int id)
  {
- var usuario = await _context.Usuarios.FindAsync(id);
- if (usuario == null)
- return false;
+ var user = await _ctx.Usuarios.Include(u => u.UsuarioRoles).FirstOrDefaultAsync(u => u.Id == id);
+ if (user == null) return false;
 
- _context.Usuarios.Remove(usuario);
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(id, "Eliminación de usuario", "Usuarios", "0.0.0.0");
+ // No eliminar si tiene matrículas o asignaciones de docente
+ var hasMatriculas = await _ctx.Matriculas.AnyAsync(m => m.EstudianteId == id);
+ var hasAsignaciones = await _ctx.CursoDocentes.AnyAsync(cd => cd.DocenteId == id);
+ if (hasMatriculas || hasAsignaciones) return false;
+
+ _ctx.UsuarioRoles.RemoveRange(user.UsuarioRoles);
+ _ctx.Usuarios.Remove(user);
+ await _ctx.SaveChangesAsync();
+
+ try { await _bitacora.RegistrarAsync(0, $"Eliminar usuario {user.Email}", "Usuarios", string.Empty); } catch { }
+
  return true;
  }
  }
