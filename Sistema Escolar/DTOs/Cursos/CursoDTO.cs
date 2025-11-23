@@ -11,7 +11,10 @@ namespace SistemaEscolar.DTOs.Cursos
  public string Descripcion { get; set; } = string.Empty;
  public int Creditos { get; set; }
  public int? CuatrimestreId { get; set; }
+ // Nombre legible del cuatrimestre (ej. "I", "II", "2025-1", etc.)
  public string? Cuatrimestre { get; set; }
+ // Nuevo: número de cuatrimestre para filtros lógicos en UI
+ public int? CuatrimestreNumero { get; set; }
 
  public List<string> Docentes { get; set; } = new();
  }

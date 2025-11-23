@@ -86,6 +86,50 @@ BEGIN
 END
 ";
  ctx.Database.ExecuteSqlRaw(sql);
+ 
+ try
+ {
+ // Ensure database connection
+ ctx.Database.OpenConnection();
+
+ // Add 'Numero' column to Cuatrimestres if missing
+ var sqlAddNumero = @"
+IF COL_LENGTH('dbo.Cuatrimestres','Numero') IS NULL
+BEGIN
+ ALTER TABLE dbo.Cuatrimestres ADD Numero int NOT NULL CONSTRAINT DF_Cuatrimestres_Numero DEFAULT(0);
+END
+";
+ ctx.Database.ExecuteSqlRaw(sqlAddNumero);
+
+ // Ensure Curso audit columns exist (CreadoPorId, FechaCreacion, ModificadoPorId, FechaModificacion)
+ var sqlAddCursoCols = @"
+IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
+BEGIN
+ ALTER TABLE dbo.Cursos ADD CreadoPorId int NULL;
+END
+IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
+BEGIN
+ ALTER TABLE dbo.Cursos ADD FechaCreacion datetime2 NULL;
+END
+IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
+BEGIN
+ ALTER TABLE dbo.Cursos ADD ModificadoPorId int NULL;
+END
+IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
+BEGIN
+ ALTER TABLE dbo.Cursos ADD FechaModificacion datetime2 NULL;
+END
+";
+ ctx.Database.ExecuteSqlRaw(sqlAddCursoCols);
+ }
+ catch
+ {
+ // swallow to avoid preventing app start in environments where migration is managed externally
+ }
+ finally
+ {
+ try { ctx.Database.CloseConnection(); } catch { }
+ }
  }
  }
 }

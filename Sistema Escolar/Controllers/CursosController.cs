@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SistemaEscolar.Controllers
 {
- // Administrador y Coordinador
+ // Administrador y Coordinador: CRUD cursos
  [Authorize(Roles = "Administrador,Coordinador")]
  public class CursosController : Controller
  {
@@ -66,7 +66,6 @@ namespace SistemaEscolar.Controllers
  var ok = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
  if(!ok)
  {
- // Mensaje específico si el cambio de código está bloqueado por matrículas
  var tieneMatriculas = await _ctx.Matriculas.AnyAsync(m => m.CursoId == id);
  var msg = tieneMatriculas ? "No se puede cambiar el código porque hay estudiantes inscritos." : "No se pudo actualizar (código duplicado u otros).";
  ModelState.AddModelError("", msg);
@@ -76,7 +75,7 @@ namespace SistemaEscolar.Controllers
  return RedirectToAction("Index");
  }
 
- // Gestión de docentes asignados al curso
+ // Vista de asignar docentes por curso se mantiene en ruta separada
  [Authorize(Policy = "Cursos.AsignarDocente")]
  public async Task<IActionResult> AsignarDocentes(int id)
  {
@@ -84,7 +83,6 @@ namespace SistemaEscolar.Controllers
  if (curso==null) return NotFound();
  ViewBag.CursoId = id;
  ViewBag.CursoNombre = $"{curso.Codigo} - {curso.Nombre}";
- // listar docentes (usuarios con rol "Docente")
  var docentes = await (
  from u in _ctx.Usuarios
  join ur in _ctx.UsuarioRoles on u.Id equals ur.UsuarioId

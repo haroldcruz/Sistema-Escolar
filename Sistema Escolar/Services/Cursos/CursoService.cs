@@ -31,6 +31,7 @@ namespace SistemaEscolar.Services.Cursos
  Descripcion = c.Descripcion,
  Creditos = c.Creditos,
  Cuatrimestre = c.Cuatrimestre != null ? c.Cuatrimestre.Nombre : null,
+ CuatrimestreNumero = c.Cuatrimestre != null ? c.Cuatrimestre.Numero : null,
  Docentes = c.CursoDocentes.Select(cd => cd.Docente.Nombre + " " + cd.Docente.Apellidos).ToList()
  });
  }
@@ -49,6 +50,7 @@ namespace SistemaEscolar.Services.Cursos
  Descripcion = c.Descripcion,
  Creditos = c.Creditos,
  Cuatrimestre = c.Cuatrimestre?.Nombre,
+ CuatrimestreNumero = c.Cuatrimestre?.Numero,
  Docentes = c.CursoDocentes.Select(cd => cd.Docente.Nombre + " " + cd.Docente.Apellidos).ToList()
  };
  }
@@ -187,6 +189,36 @@ namespace SistemaEscolar.Services.Cursos
  return await _ctx.HorariosCurso.Where(h=>h.CursoId==cursoId).OrderBy(h=>h.DiaSemana).ThenBy(h=>h.HoraInicio)
  .Select(h=> new { h.Id, h.DiaSemana, HoraInicio = h.HoraInicio.ToString(), HoraFin = h.HoraFin.ToString() })
  .ToListAsync();
+ }
+
+ public async Task<IEnumerable<CursoDTO>> GetCursosDeDocenteAsync(int docenteId)
+ {
+ var cursos = await _ctx.CursoDocentes
+ .Where(cd=>cd.DocenteId==docenteId)
+ .Include(cd=>cd.Curso).ThenInclude(c=>c.Cuatrimestre)
+ .Include(cd=>cd.Curso).ThenInclude(c=>c.CursoDocentes).ThenInclude(x=>x.Docente)
+ .Select(cd=>cd.Curso)
+ .Distinct()
+ .OrderBy(c=>c.Nombre)
+ .ToListAsync();
+ return cursos.Select(c=> new CursoDTO{
+ Id=c.Id, Codigo=c.Codigo, Nombre=c.Nombre, Descripcion=c.Descripcion, Creditos=c.Creditos,
+ Cuatrimestre = c.Cuatrimestre?.Nombre, CuatrimestreNumero = c.Cuatrimestre?.Numero,
+ Docentes = c.CursoDocentes.Select(x=> x.Docente.Nombre+" "+x.Docente.Apellidos).ToList()
+ });
+ }
+
+ public async Task<IEnumerable<CursoDTO>> GetCursosDisponiblesParaDocenteAsync(int docenteId, int? cuatrimestreId)
+ {
+ var asignadosIds = await _ctx.CursoDocentes.Where(cd=>cd.DocenteId==docenteId).Select(cd=>cd.CursoId).ToListAsync();
+ var q = _ctx.Cursos.Include(c=>c.Cuatrimestre).Include(c=>c.CursoDocentes).ThenInclude(x=>x.Docente).AsQueryable();
+ if (cuatrimestreId.HasValue) q = q.Where(c=>c.CuatrimestreId==cuatrimestreId);
+ var disponibles = await q.Where(c=> !asignadosIds.Contains(c.Id)).OrderBy(c=>c.Nombre).ToListAsync();
+ return disponibles.Select(c=> new CursoDTO{
+ Id=c.Id, Codigo=c.Codigo, Nombre=c.Nombre, Descripcion=c.Descripcion, Creditos=c.Creditos,
+ Cuatrimestre = c.Cuatrimestre?.Nombre, CuatrimestreNumero = c.Cuatrimestre?.Numero,
+ Docentes = c.CursoDocentes.Select(x=> x.Docente.Nombre+" "+x.Docente.Apellidos).ToList()
+ });
  }
  }
 }

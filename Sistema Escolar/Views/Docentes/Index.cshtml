@@ -1,0 +1,61 @@
+@{
+ ViewBag.Title = "Asignar Cursos a Docente";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var docentes = ViewBag.Docentes as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+ var docenteId = (int?)ViewBag.DocenteId;
+}
+<h2>Asignar Cursos a Docente</h2>
+<div class="row g-3 align-items-end mb-3">
+ <div class="col-md-6">
+ <label class="form-label">Docente</label>
+ <select id="docente" class="form-select">
+ <option value="">-- Seleccione --</option>
+ @foreach(var d in docentes){<option value="@d.Id" selected="@(docenteId==d.Id)">@d.NombreCompleto</option>}
+ </select>
+ </div>
+ <div class="col-md-3">
+ <label class="form-label">Cuatrimestre (opcional)</label>
+ <select id="cuat" class="form-select"></select>
+ </div>
+ <div class="col-md-3">
+ <button id="btnCargar" class="btn btn-primary">Cargar</button>
+ </div>
+</div>
+<div class="row g-4">
+ <div class="col-md-6">
+ <h5>Cursos disponibles</h5>
+ <table class="table" id="tblDisp"><thead><tr><th>Código</th><th>Nombre</th><th></th></tr></thead><tbody></tbody></table>
+ </div>
+ <div class="col-md-6">
+ <h5>Cursos asignados</h5>
+ <table class="table" id="tblAsig"><thead><tr><th>Código</th><th>Nombre</th><th></th></tr></thead><tbody></tbody></table>
+ </div>
+</div>
+<script>
+ async function cargarCuatrimestres(){
+ const sel = document.getElementById('cuat'); sel.innerHTML = '<option value="">Todos</option>';
+ const r = await fetch('/api/catalogo/cuatrimestres',{ credentials:'include' }); if(!r.ok) return;
+ const list = await r.json(); sel.innerHTML += list.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ async function cargar(){
+ const docenteId = document.getElementById('docente').value; if(!docenteId){ alert('Seleccione docente'); return; }
+ const cuat = document.getElementById('cuat').value || '';
+ const asigR = await fetch(`/api/docentes/${docenteId}/cursos`, { credentials:'include' }); const asig = asigR.ok? await asigR.json(): [];
+ const dispR = await fetch(`/api/docentes/${docenteId}/cursos-disponibles?cuatrimestreId=${cuat}`, { credentials:'include' }); const disp = dispR.ok? await dispR.json(): [];
+ const asigTb = document.querySelector('#tblAsig tbody'); asigTb.innerHTML = asig.map(c=>`<tr><td>${c.codigo}</td><td>${c.nombre}</td><td><button data-id="${c.id}" class="btn btn-sm btn-outline-danger quitar">Quitar</button></td></tr>`).join('');
+ const dispTb = document.querySelector('#tblDisp tbody'); dispTb.innerHTML = disp.map(c=>`<tr><td>${c.codigo}</td><td>${c.nombre}</td><td><button data-id="${c.id}" class="btn btn-sm btn-outline-primary asignar">Asignar</button></td></tr>`).join('');
+ asigTb.querySelectorAll('button.quitar').forEach(b=> b.onclick = ()=> mover(b.getAttribute('data-id'), false));
+ dispTb.querySelectorAll('button.asignar').forEach(b=> b.onclick = ()=> mover(b.getAttribute('data-id'), true));
+ }
+ async function mover(cursoId, asignar){
+ const docenteId = document.getElementById('docente').value; if(!docenteId) return;
+ const url = `/api/cursos/${cursoId}/docentes/${docenteId}`;
+ const r = await fetch(url, { method: asignar? 'POST':'DELETE', credentials:'include' });
+ if(!r.ok){ const j = await r.json().catch(()=>({message:'Error'})); alert(j.message||'Error'); }
+ await cargar();
+ }
+ document.getElementById('btnCargar').onclick = cargar;
+ document.getElementById('docente').addEventListener('change', cargar);
+ cargarCuatrimestres();
+ if(@(docenteId.HasValue? "true":"false")) cargar();
+</script>

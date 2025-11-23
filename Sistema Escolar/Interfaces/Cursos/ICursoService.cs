@@ -19,5 +19,8 @@ namespace SistemaEscolar.Interfaces.Cursos
  Task<(bool ok, string? error)> AddHorarioAsync(int cursoId, int diaSemana, TimeSpan inicio, TimeSpan fin, int usuarioId, string ip);
  Task<bool> RemoveHorarioAsync(int horarioId, int usuarioId, string ip);
  Task<IEnumerable<object>> GetHorariosAsync(int cursoId);
+ // Docente-centricas
+ Task<IEnumerable<CursoDTO>> GetCursosDeDocenteAsync(int docenteId);
+ Task<IEnumerable<CursoDTO>> GetCursosDisponiblesParaDocenteAsync(int docenteId, int? cuatrimestreId);
  }
 }
