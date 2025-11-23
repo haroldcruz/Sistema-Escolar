@@ -54,9 +54,9 @@ namespace SistemaEscolar.Data
                 //6. Datos académicos demo (solo si no existen cursos)
                 if(!ctx.Cursos.Any())
                 {
-                    var cuatrimestre1 = new Cuatrimestre { Nombre = "2024-1", Anio =2024 };
-                    var cuatrimestre2 = new Cuatrimestre { Nombre = "2024-2", Anio =2024 };
-                    var cuatrimestre3 = new Cuatrimestre { Nombre = "2025-1", Anio =2025 };
+                    var cuatrimestre1 = new Cuatrimestre { Nombre = "2024-1" };
+                    var cuatrimestre2 = new Cuatrimestre { Nombre = "2024-2" };
+                    var cuatrimestre3 = new Cuatrimestre { Nombre = "2025-1" };
                     ctx.Cuatrimestres.AddRange(cuatrimestre1, cuatrimestre2, cuatrimestre3); ctx.SaveChanges();
                     var c1 = CrearCurso("MAT101","Matemáticas Básicas",3, cuatrimestre1.Id, adminUser.Id);
                     var c2 = CrearCurso("FIS101","Física General",4, cuatrimestre1.Id, adminUser.Id);
@@ -133,7 +133,7 @@ namespace SistemaEscolar.Data
         private static Usuario EnsureUsuario(ApplicationDbContext ctx, string nombre,string apellidos,string email,string identificacion,string password){ var u = ctx.Usuarios.FirstOrDefault(x=>x.Email==email); if(u!=null) return u; PasswordHasher.CreatePasswordHash(password,out var hash,out var salt); u = new Usuario{ Nombre=nombre, Apellidos=apellidos, Email=email, Identificacion=identificacion, Activo=true, FechaCreacion=DateTime.UtcNow, PasswordHash=hash, PasswordSalt=salt }; ctx.Usuarios.Add(u); return u; }
         private static void EnsureUsuarioRol(ApplicationDbContext ctx, int usuarioId, int rolId){ if(!ctx.UsuarioRoles.Any(ur=>ur.UsuarioId==usuarioId && ur.RolId==rolId)) ctx.UsuarioRoles.Add(new UsuarioRol{ UsuarioId=usuarioId, RolId=rolId}); }
         private static Curso CrearCurso(string codigo,string nombre,int creditos,int cuatrimestreId,int usuarioCreacion)
-            => new Curso{ Codigo=codigo, Nombre=nombre, Descripcion=$"Curso de {nombre}", Creditos=creditos, CuatrimestreId=cuatrimestreId, FechaCreacion=DateTime.UtcNow, UsuarioCreacion=usuarioCreacion };
+            => new Curso{ Codigo=codigo, Nombre=nombre, Descripcion=$"Curso de {nombre}", Creditos=creditos, CuatrimestreId=cuatrimestreId, FechaCreacion=DateTime.UtcNow, CreadoPorId=usuarioCreacion };
         private static Evaluacion CrearEval(Matricula m,int usuarioRegistro,decimal nota,string obs,string participacion,string estado)
             => new Evaluacion{ MatriculaId=m.Id, Matricula=m, UsuarioRegistro=usuarioRegistro, Nota=nota, Observaciones=obs, Participacion=participacion, Estado=estado, FechaRegistro=DateTime.UtcNow };
     }

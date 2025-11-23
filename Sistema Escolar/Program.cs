@@ -41,7 +41,7 @@ builder.Services.AddSingleton(jwtSettings);
 // DI services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
-builder.Services.AddScoped<IRolService, RolService>(); // REGISTRO FALTANTE
+builder.Services.AddScoped<IRolService, RolService>();
 builder.Services.AddScoped<ICursoService, CursoService>();
 builder.Services.AddScoped<IHistorialService, HistorialService>();
 builder.Services.AddScoped<IBitacoraService, BitacoraService>();
@@ -101,12 +101,13 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Seed
+// Patch DB columns if needed
 using (var scope = app.Services.CreateScope())
 {
  var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    ctx.Database.EnsureCreated();
-    DataSeeder.Seed(ctx);
+ ctx.Database.EnsureCreated();
+ DbPatcher.Apply(ctx); // asegura columnas CreadoPorId/FechaCreacion e índice
+ DataSeeder.Seed(ctx);
 }
 
 app.UseMiddleware<ErrorHandlerMiddleware>();

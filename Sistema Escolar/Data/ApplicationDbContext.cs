@@ -72,6 +72,11 @@ namespace SistemaEscolar.Data
                 .HasIndex(p => p.Codigo)
                 .IsUnique();
 
+            // Indice único para Código de Curso
+            modelBuilder.Entity<Curso>()
+                .HasIndex(c => c.Codigo)
+                .IsUnique();
+
             // CursoDocente — PK compuesta
             modelBuilder.Entity<CursoDocente>()
                 .HasKey(cd => new { cd.CursoId, cd.DocenteId });

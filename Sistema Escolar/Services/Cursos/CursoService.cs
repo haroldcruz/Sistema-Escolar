@@ -1,158 +1,109 @@
 using Microsoft.EntityFrameworkCore;
 using SistemaEscolar.Data;
 using SistemaEscolar.DTOs.Cursos;
+using SistemaEscolar.Interfaces.Bitacora;
 using SistemaEscolar.Interfaces.Cursos;
 using SistemaEscolar.Models.Academico;
+using System.Collections.Generic;
 using System.Linq;
-using System.Security.Claims;
+using System.Threading.Tasks;
 using System;
-using Microsoft.AspNetCore.Http;
-using SistemaEscolar.Interfaces.Bitacora;
 
 namespace SistemaEscolar.Services.Cursos
 {
- // Implementación del servicio de cursos
  public class CursoService : ICursoService
  {
- private readonly ApplicationDbContext _context;
- private readonly IHttpContextAccessor _http;
+ private readonly ApplicationDbContext _ctx;
  private readonly IBitacoraService _bitacora;
+ public CursoService(ApplicationDbContext ctx, IBitacoraService bitacora){ _ctx = ctx; _bitacora = bitacora; }
 
- public CursoService(ApplicationDbContext context, IHttpContextAccessor http, IBitacoraService bitacora)
- {
- _context = context;
- _http = http;
- _bitacora = bitacora;
- }
-
- private int GetUserId() => int.Parse(_http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
- private string GetIp() => _http.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "0.0.0.0";
-
- // Lista de cursos
  public async Task<IEnumerable<CursoDTO>> GetAllAsync()
  {
- return await _context.Cursos
- .Include(c => c.Cuatrimestre)
- .Include(c => c.CursoDocentes).ThenInclude(cd => cd.Docente)
- .Select(c => new CursoDTO
- {
+ var cursos = await _ctx.Cursos
+ .Include(c=>c.Cuatrimestre)
+ .Include(c=>c.CursoDocentes).ThenInclude(cd=>cd.Docente)
+ .OrderBy(c=>c.Nombre)
+ .ToListAsync();
+ return cursos.Select(c => new CursoDTO{
  Id = c.Id,
  Codigo = c.Codigo,
  Nombre = c.Nombre,
  Descripcion = c.Descripcion,
  Creditos = c.Creditos,
  Cuatrimestre = c.Cuatrimestre != null ? c.Cuatrimestre.Nombre : null,
- CuatrimestreId = c.CuatrimestreId,
- Docentes = c.CursoDocentes.Select(d => d.Docente.Nombre + " " + d.Docente.Apellidos).ToList()
- })
- .ToListAsync();
+ Docentes = c.CursoDocentes.Select(cd => cd.Docente.Nombre + " " + cd.Docente.Apellidos).ToList()
+ });
  }
 
- // Detalle de curso
- public async Task<CursoDTO> GetByIdAsync(int id)
+ public async Task<CursoDTO?> GetByIdAsync(int id)
  {
- var c = await _context.Cursos
- .Include(cu => cu.Cuatrimestre)
- .Include(d => d.CursoDocentes).ThenInclude(x => x.Docente)
- .FirstOrDefaultAsync(cu => cu.Id == id);
- if (c == null)
- return null!;
- return new CursoDTO
- {
+ var c = await _ctx.Cursos
+ .Include(x=>x.Cuatrimestre)
+ .Include(x=>x.CursoDocentes).ThenInclude(cd=>cd.Docente)
+ .FirstOrDefaultAsync(x=>x.Id==id);
+ if (c==null) return null;
+ return new CursoDTO{
  Id = c.Id,
  Codigo = c.Codigo,
  Nombre = c.Nombre,
  Descripcion = c.Descripcion,
  Creditos = c.Creditos,
- CuatrimestreId = c.CuatrimestreId,
- Cuatrimestre = c.Cuatrimestre != null ? c.Cuatrimestre.Nombre : null,
- Docentes = c.CursoDocentes.Select(x => x.Docente.Nombre + " " + x.Docente.Apellidos).ToList()
+ Cuatrimestre = c.Cuatrimestre?.Nombre,
+ Docentes = c.CursoDocentes.Select(cd => cd.Docente.Nombre + " " + cd.Docente.Apellidos).ToList()
  };
  }
 
- // Crear curso
- public async Task<bool> CreateAsync(CursoCreateDTO dto)
+ public async Task<bool> CreateAsync(CursoCreateDTO dto, int usuarioId, string ip)
  {
- var exists = await _context.Cursos.AnyAsync(x => x.Codigo == dto.Codigo);
- if (exists) return false;
- var userId = GetUserId();
- var entity = new Curso
- {
+ dto.Codigo = (dto.Codigo ?? string.Empty).Trim();
+ dto.Nombre = (dto.Nombre ?? string.Empty).Trim();
+ if (string.IsNullOrWhiteSpace(dto.Codigo) || string.IsNullOrWhiteSpace(dto.Nombre)) return false;
+ if (await _ctx.Cursos.AnyAsync(c => c.Codigo == dto.Codigo)) return false; // duplicado
+
+ var c = new Curso{
  Codigo = dto.Codigo,
  Nombre = dto.Nombre,
- Descripcion = dto.Descripcion,
+ Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
  Creditos = dto.Creditos,
  CuatrimestreId = dto.CuatrimestreId,
  FechaCreacion = DateTime.UtcNow,
- UsuarioCreacion = userId
+ CreadoPorId = usuarioId
  };
- _context.Cursos.Add(entity);
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(userId, $"Curso creado {entity.Codigo}", "Cursos", GetIp());
+ _ctx.Cursos.Add(c);
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId, $"Crear curso {c.Codigo} - {c.Nombre}", "Cursos", ip);
  return true;
  }
 
- // Actualizar curso
- public async Task<bool> UpdateAsync(int id, CursoUpdateDTO dto)
+ public async Task<bool> UpdateAsync(int id, CursoUpdateDTO dto, int usuarioId, string ip)
  {
- var c = await _context.Cursos.FindAsync(id);
- if (c == null) return false;
- bool tieneMatriculas = await _context.Matriculas.AnyAsync(m => m.CursoId == id);
- if (!string.Equals(c.Codigo, dto.Codigo, StringComparison.OrdinalIgnoreCase))
+ var c = await _ctx.Cursos.FirstOrDefaultAsync(x=>x.Id==id);
+ if (c==null) return false;
+ // Validar cambio de código
+ var nuevoCodigo = (dto.Codigo ?? string.Empty).Trim();
+ if (string.IsNullOrWhiteSpace(nuevoCodigo)) return false;
+ if (!string.Equals(c.Codigo, nuevoCodigo, StringComparison.OrdinalIgnoreCase))
  {
- if (tieneMatriculas) return false;
- var exists = await _context.Cursos.AnyAsync(x => x.Codigo == dto.Codigo && x.Id != id);
- if (exists) return false;
- c.Codigo = dto.Codigo;
+ if (await _ctx.Cursos.AnyAsync(x=>x.Codigo==nuevoCodigo && x.Id!=id)) return false;
+ c.Codigo = nuevoCodigo;
  }
- c.Nombre = dto.Nombre;
- c.Descripcion = dto.Descripcion;
+ c.Nombre = (dto.Nombre ?? string.Empty).Trim();
+ c.Descripcion = dto.Descripcion?.Trim() ?? string.Empty;
  c.Creditos = dto.Creditos;
  c.CuatrimestreId = dto.CuatrimestreId;
- c.UsuarioModificacion = GetUserId();
- c.FechaModificacion = DateTime.UtcNow;
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(c.UsuarioModificacion ??0, $"Curso modificado {c.Codigo}", "Cursos", GetIp());
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId, $"Actualizar curso {c.Codigo}", "Cursos", ip);
  return true;
  }
 
- public async Task<bool> PuedeEliminarAsync(int cursoId)
+ public async Task<bool> DeleteAsync(int id, int usuarioId, string ip)
  {
- return !await _context.Matriculas.AnyAsync(m => m.CursoId == cursoId);
- }
-
- // Eliminar curso (solo si no tiene matrículas)
- public async Task<bool> DeleteAsync(int id)
- {
- var c = await _context.Cursos.FindAsync(id);
- if (c == null) return false;
- if (!await PuedeEliminarAsync(id)) return false;
- _context.Cursos.Remove(c);
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(GetUserId(), $"Curso eliminado {c.Codigo}", "Cursos", GetIp());
- return true;
- }
-
- // Asignar docente
- public async Task<bool> AsignarDocenteAsync(CursoDocenteDTO dto)
- {
- var curso = await _context.Cursos.FindAsync(dto.CursoId);
- if (curso == null) return false;
- var existe = await _context.CursoDocentes.AnyAsync(x => x.CursoId == dto.CursoId && x.DocenteId == dto.DocenteId);
- if (existe) return true; // ya asignado
- _context.CursoDocentes.Add(new CursoDocente { CursoId = dto.CursoId, DocenteId = dto.DocenteId, Activo = true });
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(GetUserId(), $"Docente {dto.DocenteId} asignado curso {dto.CursoId}", "Cursos", GetIp());
- return true;
- }
-
- public async Task<bool> RemoverDocenteAsync(int cursoId, int docenteId)
- {
- var rel = await _context.CursoDocentes.FirstOrDefaultAsync(x => x.CursoId == cursoId && x.DocenteId == docenteId);
- if (rel == null) return false;
- _context.CursoDocentes.Remove(rel);
- await _context.SaveChangesAsync();
- await _bitacora.RegistrarAsync(GetUserId(), $"Docente {docenteId} removido curso {cursoId}", "Cursos", GetIp());
+ var c = await _ctx.Cursos.Include(x=>x.Matriculas).Include(x=>x.CursoDocentes).FirstOrDefaultAsync(x=>x.Id==id);
+ if (c==null) return false;
+ if (c.Matriculas.Any()) return false; // no eliminar si tiene matrículas
+ _ctx.Cursos.Remove(c);
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId, $"Eliminar curso {c.Codigo}", "Cursos", ip);
  return true;
  }
  }

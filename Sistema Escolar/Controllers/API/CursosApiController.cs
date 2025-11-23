@@ -4,6 +4,7 @@ using SistemaEscolar.Interfaces.Cursos;
 using SistemaEscolar.DTOs.Cursos;
 using System.Threading.Tasks;
 using System.Linq;
+using System.Security.Claims;
 
 namespace SistemaEscolar.Controllers.API
 {
@@ -15,6 +16,9 @@ namespace SistemaEscolar.Controllers.API
  {
  private readonly ICursoService _cursos;
  public CursosApiController(ICursoService cursos){ _cursos = cursos; }
+
+ private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+ private string Ip() => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
 
  // GET api/cursos
  [HttpGet]
@@ -39,10 +43,9 @@ namespace SistemaEscolar.Controllers.API
  public async Task<IActionResult> Create([FromBody] CursoCreateDTO dto)
  {
  if (!ModelState.IsValid) return BadRequest(ModelState);
- var ok = await _cursos.CreateAsync(dto);
- if (!ok) return BadRequest();
- // No se expone id en servicio actual, devolver204 para simplicidad
- return NoContent();
+ var ok = await _cursos.CreateAsync(dto, CurrentUserId(), Ip());
+ if (!ok) return BadRequest(new { message = "No se pudo crear (código duplicado u otros)." });
+ return Ok(new { message = "Curso creado" });
  }
 
  // PUT api/cursos/{id}
@@ -51,9 +54,9 @@ namespace SistemaEscolar.Controllers.API
  public async Task<IActionResult> Update(int id, [FromBody] CursoUpdateDTO dto)
  {
  if (!ModelState.IsValid) return BadRequest(ModelState);
- var ok = await _cursos.UpdateAsync(id, dto);
- if (!ok) return NotFound();
- return NoContent();
+ var ok = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
+ if (!ok) return NotFound(new { message = "No se pudo actualizar" });
+ return Ok(new { message = "Curso actualizado" });
  }
 
  // DELETE api/cursos/{id}
@@ -61,9 +64,9 @@ namespace SistemaEscolar.Controllers.API
  [Authorize(Policy = "Cursos.Eliminar")]
  public async Task<IActionResult> Delete(int id)
  {
- var ok = await _cursos.DeleteAsync(id);
- if (!ok) return NotFound();
- return NoContent();
+ var ok = await _cursos.DeleteAsync(id, CurrentUserId(), Ip());
+ if (!ok) return NotFound(new { message = "No se pudo eliminar" });
+ return Ok(new { message = "Curso eliminado" });
  }
  }
 }

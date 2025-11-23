@@ -1,0 +1,40 @@
+@model SistemaEscolar.DTOs.Cursos.CursoUpdateDTO
+@{
+ ViewBag.Title = "Editar Curso";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var cuatrimestres = ViewBag.Cuatrimestres as IEnumerable<SistemaEscolar.Models.Academico.Cuatrimestre> ?? Enumerable.Empty<SistemaEscolar.Models.Academico.Cuatrimestre>();
+}
+<h2>Editar Curso</h2>
+<form method="post">
+ <div class="mb-3">
+ <label class="form-label">Código</label>
+ <input asp-for="Codigo" class="form-control" />
+ <span asp-validation-for="Codigo" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Nombre</label>
+ <input asp-for="Nombre" class="form-control" />
+ <span asp-validation-for="Nombre" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Descripción</label>
+ <textarea asp-for="Descripcion" class="form-control"></textarea>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Créditos</label>
+ <input asp-for="Creditos" type="number" class="form-control" />
+ <span asp-validation-for="Creditos" class="text-danger"></span>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Cuatrimestre</label>
+ <select asp-for="CuatrimestreId" class="form-select">
+ <option value="">-- Seleccione --</option>
+ @foreach(var c in cuatrimestres){
+ <option value="@c.Id" selected="@(Model.CuatrimestreId==c.Id)">@c.Nombre</option>
+ }
+ </select>
+ </div>
+ <button class="btn btn-primary">Guardar</button>
+ <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
+@section Scripts{<partial name="_ValidationScriptsPartial" />}
