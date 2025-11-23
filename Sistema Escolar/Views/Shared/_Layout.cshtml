@@ -19,6 +19,8 @@
  @if (User?.Identity?.IsAuthenticated ?? false)
  {
  if (User.HasClaim("permiso","Cursos.Ver")) { <li class="nav-item"><a class="nav-link" href="/Cursos">Cursos</a></li> }
+ // Enlace directo para asignación de docentes visible a quienes tienen el permiso
+ if (User.HasClaim("permiso","Cursos.AsignarDocente")) { <li class="nav-item"><a class="nav-link" href="/Cursos">Asignar Docentes</a></li> }
  if (User.HasClaim("permiso","Usuarios.Gestion")) { <li class="nav-item"><a class="nav-link" href="/Usuarios">Usuarios</a></li> }
  if (User.HasClaim("permiso","Seguridad.Gestion")) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
  if (User.HasClaim("permiso","Bitacora.Ver")) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }

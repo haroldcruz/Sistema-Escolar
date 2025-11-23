@@ -14,7 +14,7 @@
         <th>Créditos</th>
         <th>Cuatrimestre</th>
         <th>Docentes</th>
-        <th style="width:160px">Acciones</th>
+        <th style="width:240px">Acciones</th>
     </tr>
     </thead>
     <tbody></tbody>
@@ -36,6 +36,7 @@
                 <td>${(c.docentes||[]).join(', ')}</td>
                 <td>
                     <a class="btn btn-sm btn-outline-secondary" href="/Cursos/Editar/${c.id}">Editar</a>
+                    <a class="btn btn-sm btn-outline-info" href="/Cursos/AsignarDocentes/${c.id}">Docentes</a>
                     <button class="btn btn-sm btn-outline-danger" data-id="${c.id}">Eliminar</button>
                 </td>`;
             tbody.appendChild(tr);
@@ -45,6 +46,7 @@
                 const id = e.currentTarget.getAttribute('data-id');
                 if(!confirm('¿Eliminar curso?')) return;
                 const del = await fetch('/api/cursos/'+id, { method:'DELETE', credentials:'include' });
+                if(del.status===409){ const j = await del.json().catch(()=>({message:'Estudiantes matriculados'})); alert(j.message||'Estudiantes matriculados'); return; }
                 if(del.ok) cargar(); else alert('No se pudo eliminar');
             });
         });

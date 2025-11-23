@@ -1,0 +1,118 @@
+@{
+ ViewBag.Title = "Asignar Docentes";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var cursoId = (int)ViewBag.CursoId;
+ var cursoNombre = (string)ViewBag.CursoNombre;
+ var docentes = ViewBag.Docentes as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+<h2>@cursoNombre</h2>
+<div class="row g-3">
+ <div class="col-md-6">
+ <label class="form-label">Docente</label>
+ <select id="docente" class="form-select">
+ @foreach(var d in docentes){
+ <option value="@d.Id">@d.NombreCompleto</option>
+ }
+ </select>
+ </div>
+ <div class="col-md-6 d-flex align-items-end gap-2">
+ <button id="btnAsignar" class="btn btn-primary">Asignar</button>
+ <a class="btn btn-secondary" href="/Cursos">Volver</a>
+ </div>
+</div>
+<hr />
+<div class="row g-3">
+ <div class="col-md-12">
+ <h5>Docentes asignados</h5>
+ <table class="table" id="tabla">
+ <thead><tr><th>Docente</th><th style="width:120px">Acciones</th></tr></thead>
+ <tbody></tbody>
+ </table>
+ </div>
+</div>
+<hr />
+<div class="row g-3">
+ <div class="col-md-12">
+ <h5>Horarios del curso</h5>
+ <div class="row g-2 align-items-end">
+ <div class="col-md-3">
+ <label class="form-label">Día</label>
+ <select id="dia" class="form-select">
+ <option value="1">Lunes</option>
+ <option value="2">Martes</option>
+ <option value="3">Miércoles</option>
+ <option value="4">Jueves</option>
+ <option value="5">Viernes</option>
+ <option value="6">Sábado</option>
+ <option value="0">Domingo</option>
+ </select>
+ </div>
+ <div class="col-md-3">
+ <label class="form-label">Inicio</label>
+ <input id="inicio" type="time" class="form-control" />
+ </div>
+ <div class="col-md-3">
+ <label class="form-label">Fin</label>
+ <input id="fin" type="time" class="form-control" />
+ </div>
+ <div class="col-md-3">
+ <button id="btnAddHorario" class="btn btn-outline-primary">Agregar horario</button>
+ </div>
+ </div>
+ <table class="table mt-3" id="tablaHor">
+ <thead><tr><th>Día</th><th>Inicio</th><th>Fin</th><th style="width:100px">Acciones</th></tr></thead>
+ <tbody></tbody>
+ </table>
+ </div>
+</div>
+<script>
+ const cursoId = @cursoId;
+ const diaNombre = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+ async function cargar(){
+ // docentes
+ const r = await fetch(`/api/cursos/${cursoId}/docentes`, { credentials:'include' });
+ const data = await r.json();
+ const tb = document.querySelector('#tabla tbody');
+ tb.innerHTML = (data||[]).map(d=>`<tr>
+ <td>${d.nombreCompleto}</td>
+ <td><button class='btn btn-sm btn-outline-danger' data-id='${d.docenteId}'>Quitar</button></td>
+ </tr>`).join('');
+ tb.querySelectorAll('button[data-id]').forEach(b=> b.onclick = async (ev)=>{
+ const id = ev.currentTarget.getAttribute('data-id');
+ if(!confirm('¿Quitar docente?')) return;
+ const r = await fetch(`/api/cursos/${cursoId}/docentes/${id}`, { method:'DELETE', credentials:'include' });
+ if(r.ok) cargar(); else alert('No se pudo quitar');
+ });
+ // horarios
+ const hr = await fetch(`/api/cursos/${cursoId}/horarios`, { credentials:'include' });
+ const hd = await hr.json();
+ const th = document.querySelector('#tablaHor tbody');
+ th.innerHTML = (hd||[]).map(h=>`<tr>
+ <td>${diaNombre[h.diaSemana]}</td>
+ <td>${h.horaInicio}</td>
+ <td>${h.horaFin}</td>
+ <td><button class='btn btn-sm btn-outline-danger' data-hid='${h.id}'>Quitar</button></td>
+ </tr>`).join('');
+ th.querySelectorAll('button[data-hid]').forEach(b=> b.onclick = async (ev)=>{
+ const id = ev.currentTarget.getAttribute('data-hid');
+ if(!confirm('¿Quitar horario?')) return;
+ const r = await fetch(`/api/cursos/${cursoId}/horarios/${id}`, { method:'DELETE', credentials:'include' });
+ if(r.ok) cargar(); else alert('No se pudo quitar');
+ });
+ }
+ document.getElementById('btnAsignar').onclick = async ()=>{
+ const sel = document.getElementById('docente');
+ const id = sel.value;
+ const r = await fetch(`/api/cursos/${cursoId}/docentes/${id}`, { method:'POST', credentials:'include' });
+ if(r.ok) cargar();
+ else { const j = await r.json().catch(()=>({message:'Error'})); alert(j.message||'No se pudo asignar'); }
+ };
+ document.getElementById('btnAddHorario').onclick = async ()=>{
+ const dia = document.getElementById('dia').value;
+ const inicio = document.getElementById('inicio').value;
+ const fin = document.getElementById('fin').value;
+ const r = await fetch(`/api/cursos/${cursoId}/horarios`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ diaSemana: parseInt(dia), inicio, fin }), credentials:'include' });
+ if(r.ok) cargar(); else { const j = await r.json().catch(()=>({message:'Error'})); alert(j.message||'No se pudo agregar'); }
+ };
+ cargar();
+</script>

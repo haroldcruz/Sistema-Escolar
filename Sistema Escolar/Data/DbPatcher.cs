@@ -13,6 +13,10 @@ IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [CreadoPorId] INT NULL;
 IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [FechaCreacion] DATETIME2 NOT NULL CONSTRAINT DF_Cursos_FechaCreacion DEFAULT (SYSUTCDATETIME());
+IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
+ ALTER TABLE [dbo].[Cursos] ADD [ModificadoPorId] INT NULL;
+IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
+ ALTER TABLE [dbo].[Cursos] ADD [FechaModificacion] DATETIME2 NULL;
 
 /* Normalizar tipo y longitud de Codigo para poder indexar */
 DECLARE @data_type sysname, @maxlen int;
@@ -42,12 +46,8 @@ END
 /* Sincronizar columna legada UsuarioCreacion con nueva CreadoPorId */
 IF COL_LENGTH('dbo.Cursos','UsuarioCreacion') IS NOT NULL
 BEGIN
- -- Copiar datos legados si CreadoPorId está NULL
  UPDATE C SET CreadoPorId = ISNULL(CreadoPorId, UsuarioCreacion) FROM dbo.Cursos AS C;
- -- Hacer nullable para no bloquear inserts nuevos
- BEGIN TRY
- ALTER TABLE dbo.Cursos ALTER COLUMN UsuarioCreacion INT NULL;
- END TRY BEGIN CATCH END CATCH;
+ BEGIN TRY ALTER TABLE dbo.Cursos ALTER COLUMN UsuarioCreacion INT NULL; END TRY BEGIN CATCH END CATCH;
 END
 
 /* Asegurar NOT NULL en Codigo para consistencia con el modelo */
@@ -63,6 +63,27 @@ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Cursos_Codigo' AND obj
 /* Agregar FK CreadoPorId si no existe */
 IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_CreadoPorId') AND COL_LENGTH('dbo.Cursos','CreadoPorId') IS NOT NULL
  ALTER TABLE [dbo].[Cursos] WITH CHECK ADD CONSTRAINT [FK_Cursos_Usuarios_CreadoPorId] FOREIGN KEY([CreadoPorId]) REFERENCES [dbo].[Usuarios] ([Id]);
+/* Agregar FK ModificadoPorId si no existe */
+IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_ModificadoPorId') AND COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NOT NULL
+ ALTER TABLE [dbo].[Cursos] WITH CHECK ADD CONSTRAINT [FK_Cursos_Usuarios_ModificadoPorId] FOREIGN KEY([ModificadoPorId]) REFERENCES [dbo].[Usuarios] ([Id]);
+
+/* ==============================
+PARCHE NUEVO: CREAR TABLA dbo.HorariosCurso
+============================== */
+
+/* Crear tabla HorariosCurso si no existe */
+IF OBJECT_ID('dbo.HorariosCurso','U') IS NULL
+BEGIN
+ CREATE TABLE dbo.HorariosCurso(
+ Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+ CursoId INT NOT NULL,
+ DiaSemana INT NOT NULL,
+ HoraInicio TIME(0) NOT NULL,
+ HoraFin TIME(0) NOT NULL
+ );
+ ALTER TABLE dbo.HorariosCurso ADD CONSTRAINT FK_HorariosCurso_Cursos FOREIGN KEY (CursoId) REFERENCES dbo.Cursos(Id) ON DELETE CASCADE;
+ CREATE UNIQUE INDEX UX_HorariosCurso_Curso_Dia_Inicio ON dbo.HorariosCurso(CursoId, DiaSemana, HoraInicio);
+END
 ";
  ctx.Database.ExecuteSqlRaw(sql);
  }

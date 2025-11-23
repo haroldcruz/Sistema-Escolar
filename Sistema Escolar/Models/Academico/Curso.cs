@@ -28,10 +28,15 @@ namespace SistemaEscolar.Models.Academico
         public int? CuatrimestreId { get; set; } // FK
         public Cuatrimestre? Cuatrimestre { get; set; }
 
-        // Auditoría
+        // Auditoría creación
         public DateTime FechaCreacion { get; set; }
         public int? CreadoPorId { get; set; }
         public Usuario? CreadoPor { get; set; }
+
+        // Auditoría modificación
+        public DateTime? FechaModificacion { get; set; }
+        public int? ModificadoPorId { get; set; }
+        public Usuario? ModificadoPor { get; set; }
 
         // Relación con matrículas
         public ICollection<Matricula> Matriculas { get; set; } = new List<Matricula>();

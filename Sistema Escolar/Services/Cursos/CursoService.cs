@@ -77,20 +77,25 @@ namespace SistemaEscolar.Services.Cursos
 
  public async Task<bool> UpdateAsync(int id, CursoUpdateDTO dto, int usuarioId, string ip)
  {
- var c = await _ctx.Cursos.FirstOrDefaultAsync(x=>x.Id==id);
+ var c = await _ctx.Cursos.Include(x=>x.Matriculas).FirstOrDefaultAsync(x=>x.Id==id);
  if (c==null) return false;
- // Validar cambio de código
+
+ // Validar cambio de código: prohibir si tiene matrículas
  var nuevoCodigo = (dto.Codigo ?? string.Empty).Trim();
- if (string.IsNullOrWhiteSpace(nuevoCodigo)) return false;
  if (!string.Equals(c.Codigo, nuevoCodigo, StringComparison.OrdinalIgnoreCase))
  {
+ if (c.Matriculas.Any()) return false; // no permitir cambiar código con estudiantes inscritos
+ if (string.IsNullOrWhiteSpace(nuevoCodigo)) return false;
  if (await _ctx.Cursos.AnyAsync(x=>x.Codigo==nuevoCodigo && x.Id!=id)) return false;
  c.Codigo = nuevoCodigo;
  }
+
  c.Nombre = (dto.Nombre ?? string.Empty).Trim();
  c.Descripcion = dto.Descripcion?.Trim() ?? string.Empty;
  c.Creditos = dto.Creditos;
  c.CuatrimestreId = dto.CuatrimestreId;
+ c.FechaModificacion = DateTime.UtcNow;
+ c.ModificadoPorId = usuarioId;
  await _ctx.SaveChangesAsync();
  await _bitacora.RegistrarAsync(usuarioId, $"Actualizar curso {c.Codigo}", "Cursos", ip);
  return true;
@@ -105,6 +110,83 @@ namespace SistemaEscolar.Services.Cursos
  await _ctx.SaveChangesAsync();
  await _bitacora.RegistrarAsync(usuarioId, $"Eliminar curso {c.Codigo}", "Cursos", ip);
  return true;
+ }
+
+ // Asignación de docentes
+ public async Task<(bool ok, string? error)> AsignarDocenteAsync(int cursoId, int docenteId, int usuarioId, string ip)
+ {
+ var curso = await _ctx.Cursos.AsNoTracking().FirstOrDefaultAsync(c=>c.Id==cursoId);
+ if (curso==null) return (false, "Curso no encontrado");
+ var docente = await _ctx.Usuarios.AsNoTracking().FirstOrDefaultAsync(u=>u.Id==docenteId);
+ if (docente==null) return (false, "Docente no encontrado");
+ // ya asignado
+ if (await _ctx.CursoDocentes.AnyAsync(cd=>cd.CursoId==cursoId && cd.DocenteId==docenteId))
+ return (true, null);
+ // Validación de conflicto: mismo cuatrimestre
+ if (curso.CuatrimestreId.HasValue)
+ {
+ var conflicto = await _ctx.CursoDocentes
+ .Include(cd=>cd.Curso)
+ .AnyAsync(cd=>cd.DocenteId==docenteId && cd.Curso.CuatrimestreId==curso.CuatrimestreId);
+ if (conflicto) return (false, "Conflicto de horario (mismo cuatrimestre)");
+ }
+ _ctx.CursoDocentes.Add(new CursoDocente{ CursoId=cursoId, DocenteId=docenteId, Activo=true });
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId, $"Asignar docente {docente.Nombre} {docente.Apellidos} a curso {curso.Codigo}", "Cursos", ip);
+ return (true, null);
+ }
+
+ public async Task<bool> QuitarDocenteAsync(int cursoId, int docenteId, int usuarioId, string ip)
+ {
+ var rel = await _ctx.CursoDocentes.FirstOrDefaultAsync(cd=>cd.CursoId==cursoId && cd.DocenteId==docenteId);
+ if (rel==null) return false;
+ _ctx.CursoDocentes.Remove(rel);
+ await _ctx.SaveChangesAsync();
+ var curso = await _ctx.Cursos.AsNoTracking().FirstOrDefaultAsync(c=>c.Id==cursoId);
+ var docente = await _ctx.Usuarios.AsNoTracking().FirstOrDefaultAsync(u=>u.Id==docenteId);
+ await _bitacora.RegistrarAsync(usuarioId, $"Quitar docente {docente?.Nombre} {docente?.Apellidos} de curso {curso?.Codigo}", "Cursos", ip);
+ return true;
+ }
+
+ public async Task<IEnumerable<DocenteAsignadoDTO>> GetDocentesAsignadosAsync(int cursoId)
+ {
+ return await _ctx.CursoDocentes
+ .Where(cd=>cd.CursoId==cursoId)
+ .Include(cd=>cd.Docente)
+ .Select(cd=> new DocenteAsignadoDTO{ DocenteId = cd.DocenteId, NombreCompleto = cd.Docente.Nombre + " " + cd.Docente.Apellidos, Activo = cd.Activo })
+ .ToListAsync();
+ }
+
+ public async Task<(bool ok, string? error)> AddHorarioAsync(int cursoId, int diaSemana, TimeSpan inicio, TimeSpan fin, int usuarioId, string ip)
+ {
+ if (fin<=inicio) return (false, "Rango inválido");
+ var curso = await _ctx.Cursos.FirstOrDefaultAsync(c=>c.Id==cursoId);
+ if (curso==null) return (false, "Curso no encontrado");
+ // superposición en mismo curso
+ var overlap = await _ctx.HorariosCurso.AnyAsync(h=> h.CursoId==cursoId && h.DiaSemana==diaSemana &&
+ ((inicio>=h.HoraInicio && inicio<h.HoraFin) || (fin>h.HoraInicio && fin<=h.HoraFin) || (inicio<=h.HoraInicio && fin>=h.HoraFin)));
+ if (overlap) return (false, "Conflicto con otro horario del curso");
+ _ctx.HorariosCurso.Add(new HorarioCurso{ CursoId=cursoId, DiaSemana=diaSemana, HoraInicio=inicio, HoraFin=fin });
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId,$"Agregar horario {diaSemana} {inicio}-{fin} a {curso.Codigo}","Cursos",ip);
+ return (true,null);
+ }
+
+ public async Task<bool> RemoveHorarioAsync(int id, int usuarioId, string ip)
+ {
+ var hor = await _ctx.HorariosCurso.Include(h=>h.Curso).FirstOrDefaultAsync(h=>h.Id==id);
+ if (hor==null) return false;
+ _ctx.HorariosCurso.Remove(hor);
+ await _ctx.SaveChangesAsync();
+ await _bitacora.RegistrarAsync(usuarioId,$"Quitar horario {hor.DiaSemana} {hor.HoraInicio}-{hor.HoraFin} de {hor.Curso.Codigo}","Cursos",ip);
+ return true;
+ }
+
+ public async Task<IEnumerable<object>> GetHorariosAsync(int cursoId)
+ {
+ return await _ctx.HorariosCurso.Where(h=>h.CursoId==cursoId).OrderBy(h=>h.DiaSemana).ThenBy(h=>h.HoraInicio)
+ .Select(h=> new { h.Id, h.DiaSemana, HoraInicio = h.HoraInicio.ToString(), HoraFin = h.HoraFin.ToString() })
+ .ToListAsync();
  }
  }
 }

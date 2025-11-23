@@ -27,6 +27,7 @@ namespace SistemaEscolar.Data
         public DbSet<CursoDocente> CursoDocentes { get; set; }
         public DbSet<Matricula> Matriculas { get; set; }
         public DbSet<Evaluacion> Evaluaciones { get; set; }
+        public DbSet<HorarioCurso> HorariosCurso { get; set; } // agregado
 
         // Bitácora
         public DbSet<BitacoraEntry> BitacoraEntries { get; set; }
@@ -76,6 +77,19 @@ namespace SistemaEscolar.Data
             modelBuilder.Entity<Curso>()
                 .HasIndex(c => c.Codigo)
                 .IsUnique();
+
+            // Relaciones de auditoría de Curso
+            modelBuilder.Entity<Curso>()
+                .HasOne<Usuario>(c => c.CreadoPor)
+                .WithMany()
+                .HasForeignKey(c => c.CreadoPorId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            modelBuilder.Entity<Curso>()
+                .HasOne<Usuario>(c => c.ModificadoPor)
+                .WithMany()
+                .HasForeignKey(c => c.ModificadoPorId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // CursoDocente — PK compuesta
             modelBuilder.Entity<CursoDocente>()
@@ -133,12 +147,10 @@ namespace SistemaEscolar.Data
                 .HasForeignKey(b => b.UsuarioId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Curso → Cuatrimestre
-            modelBuilder.Entity<Curso>()
-                .HasOne(c => c.Cuatrimestre)
-                .WithMany(cu => cu.Cursos)
-                .HasForeignKey(c => c.CuatrimestreId)
-                .OnDelete(DeleteBehavior.NoAction);
+            // Horarios: unique por Curso + Dia + Inicio
+            modelBuilder.Entity<HorarioCurso>()
+                .HasIndex(h => new { h.CursoId, h.DiaSemana, h.HoraInicio })
+                .IsUnique();
         }
     }
 }

@@ -40,16 +40,15 @@ namespace SistemaEscolar.Controllers
  [Authorize(Policy = "Cursos.Editar")]
  public async Task<IActionResult> Editar(int id)
  {
- var curso = await _cursos.GetByIdAsync(id);
- if (curso == null) return NotFound();
  var entity = await _ctx.Cursos.AsNoTracking().FirstOrDefaultAsync(x=>x.Id==id);
+ if (entity==null) return NotFound();
  var dto = new CursoUpdateDTO
  {
- Codigo = entity!.Codigo,
- Nombre = entity!.Nombre,
- Descripcion = entity!.Descripcion,
- Creditos = entity!.Creditos,
- CuatrimestreId = entity!.CuatrimestreId
+ Codigo = entity.Codigo,
+ Nombre = entity.Nombre,
+ Descripcion = entity.Descripcion,
+ Creditos = entity.Creditos,
+ CuatrimestreId = entity.CuatrimestreId
  };
  ViewBag.Cuatrimestres = _ctx.Cuatrimestres.AsNoTracking().OrderBy(c=>c.Nombre).ToList();
  return View(dto);
@@ -67,11 +66,35 @@ namespace SistemaEscolar.Controllers
  var ok = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
  if(!ok)
  {
- ModelState.AddModelError("","No se pudo actualizar (código duplicado u otros)");
+ // Mensaje específico si el cambio de código está bloqueado por matrículas
+ var tieneMatriculas = await _ctx.Matriculas.AnyAsync(m => m.CursoId == id);
+ var msg = tieneMatriculas ? "No se puede cambiar el código porque hay estudiantes inscritos." : "No se pudo actualizar (código duplicado u otros).";
+ ModelState.AddModelError("", msg);
  ViewBag.Cuatrimestres = _ctx.Cuatrimestres.AsNoTracking().OrderBy(c=>c.Nombre).ToList();
  return View(dto);
  }
  return RedirectToAction("Index");
+ }
+
+ // Gestión de docentes asignados al curso
+ [Authorize(Policy = "Cursos.AsignarDocente")]
+ public async Task<IActionResult> AsignarDocentes(int id)
+ {
+ var curso = await _ctx.Cursos.AsNoTracking().FirstOrDefaultAsync(c=>c.Id==id);
+ if (curso==null) return NotFound();
+ ViewBag.CursoId = id;
+ ViewBag.CursoNombre = $"{curso.Codigo} - {curso.Nombre}";
+ // listar docentes (usuarios con rol "Docente")
+ var docentes = await (
+ from u in _ctx.Usuarios
+ join ur in _ctx.UsuarioRoles on u.Id equals ur.UsuarioId
+ join r in _ctx.Roles on ur.RolId equals r.Id
+ where r.Nombre == "Docente"
+ orderby u.Nombre
+ select new { u.Id, NombreCompleto = u.Nombre + " " + u.Apellidos }
+ ).Distinct().ToListAsync();
+ ViewBag.Docentes = docentes;
+ return View();
  }
  }
 }

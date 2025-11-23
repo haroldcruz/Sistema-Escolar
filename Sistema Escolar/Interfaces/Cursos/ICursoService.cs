@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using SistemaEscolar.DTOs.Cursos;
@@ -11,5 +12,12 @@ namespace SistemaEscolar.Interfaces.Cursos
  Task<bool> CreateAsync(CursoCreateDTO dto, int usuarioId, string ip);
  Task<bool> UpdateAsync(int id, CursoUpdateDTO dto, int usuarioId, string ip);
  Task<bool> DeleteAsync(int id, int usuarioId, string ip);
+ Task<(bool ok, string? error)> AsignarDocenteAsync(int cursoId, int docenteId, int usuarioId, string ip);
+ Task<bool> QuitarDocenteAsync(int cursoId, int docenteId, int usuarioId, string ip);
+ Task<IEnumerable<DocenteAsignadoDTO>> GetDocentesAsignadosAsync(int cursoId);
+ // Horarios
+ Task<(bool ok, string? error)> AddHorarioAsync(int cursoId, int diaSemana, TimeSpan inicio, TimeSpan fin, int usuarioId, string ip);
+ Task<bool> RemoveHorarioAsync(int horarioId, int usuarioId, string ip);
+ Task<IEnumerable<object>> GetHorariosAsync(int cursoId);
  }
 }
