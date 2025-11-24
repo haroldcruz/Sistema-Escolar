@@ -34,8 +34,8 @@
  if (User.HasClaim("permiso","Seguridad.Gestion") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
  // Bitácora: mostrar si tiene permiso o es Administrador
  if (User.HasClaim("permiso","Bitacora.Ver") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }
- // Enlace al módulo Evaluaciones: visible a usuarios con permiso o administradores
- if (User.HasClaim("permiso","Evaluaciones.Crear") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li> }
+ // Enlace al módulo Evaluaciones: visible a usuarios con permiso o administradores (hide for Docente to avoid duplicate)
+ if ((User.HasClaim("permiso","Evaluaciones.Crear") || User.IsInRole("Administrador")) && !User.IsInRole("Docente")) { <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li> }
  // Links específicos para Docente: restringidos a lo que pidió (Evaluaciones, Historial estudiantes, Editar perfil)
  if (User.IsInRole("Docente")) {
  <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li>

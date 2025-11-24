@@ -7,109 +7,110 @@
 
  <!-- Filtros -->
  <div class="row g-3 mb-3">
-  <div class="col-md-4">
-   <label>Cuatrimestre</label>
-   <select id="filtroCuatrimestre" class="form-select">
-    <option value="">Todos los cuatrimestres</option>
-   </select>
-  </div>
-  <div class="col-md-4">
-   <label>Curso</label>
-   <select id="filtroCurso" class="form-select">
-    <option value="">Seleccione cuatrimestre primero</option>
-   </select>
-  </div>
-  <div class="col-md-4 d-flex align-items-end">
-   <button id="btnFiltrar" class="btn btn-primary me-2">Filtrar</button>
-   <button id="btnCrearBloque" class="btn btn-success">Crear Bloque</button>
-  </div>
+ <div class="col-md-4">
+ <label>Cuatrimestre</label>
+ <select id="filtroCuatrimestre" class="form-select">
+ <option value="">Todos los cuatrimestres</option>
+ </select>
+ </div>
+ <div class="col-md-4">
+ <label>Curso</label>
+ <select id="filtroCurso" class="form-select">
+ <option value="">Seleccione cuatrimestre primero</option>
+ </select>
+ </div>
+ <div class="col-md-4 d-flex align-items-end">
+ <button id="btnFiltrar" class="btn btn-primary me-2">Filtrar</button>
+ <button id="btnCrearBloque" class="btn btn-success me-2">Crear Bloque</button>
+ <button id="btnCalcularFinal" class="btn btn-info" style="display:none">Calcular Nota Final</button>
+ </div>
  </div>
 
  <!-- Tabla de Bloques -->
  <div id="bloquesContainer">
-  <div class="text-center text-muted">Cargando bloques...</div>
+ <div class="text-center text-muted">Cargando bloques...</div>
  </div>
 
  <!-- Modal Crear/Editar Bloque -->
  <div class="modal" tabindex="-1" id="modalBloque">
-  <div class="modal-dialog">
-   <div class="modal-content">
-    <div class="modal-header">
-     <h5 class="modal-title" id="modalTitle">Crear Bloque de Evaluación</h5>
-     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-     <form id="formBloque">
-      <input type="hidden" id="bloqueId" />
-      <div class="mb-2">
-       <label>Cuatrimestre</label>
-       <select id="cuatrimestreId" name="CuatrimestreId" class="form-select" required>
-        <option value="">Seleccione cuatrimestre</option>
-       </select>
-      </div>
-      <div class="mb-2">
-       <label>Curso</label>
-       <select id="cursoId" name="CursoId" class="form-select" required>
-        <option value="">Seleccione cuatrimestre primero</option>
-       </select>
-      </div>
-      <div class="mb-2">
-       <label>Nombre</label>
-       <input type="text" id="nombre" name="Nombre" class="form-control" required maxlength="200" />
-      </div>
-      <div class="mb-2">
-       <label>Tipo</label>
-       <select id="tipo" name="Tipo" class="form-select">
-        <option value="General">General</option>
-        <option value="Tarea">Tarea</option>
-        <option value="Parcial">Parcial</option>
-        <option value="Asistencia">Asistencia</option>
-       </select>
-      </div>
-      <div class="mb-2">
-       <label>Peso (%)</label>
-       <input type="number" step="0.01" min="0" max="100" id="peso" name="Peso" class="form-control" />
-      </div>
-      <div class="mb-2">
-       <label>Fecha Asignación</label>
-       <input type="date" id="fechaAsignacion" name="FechaAsignacion" class="form-control" />
-      </div>
-      <div id="fechasAsistenciaContainer" style="display:none;">
-       <label>Fechas de Asistencia</label>
-       <div id="fechasAsistencia"></div>
-       <button type="button" id="addFecha" class="btn btn-sm btn-secondary mt-1">Agregar Fecha</button>
-      </div>
-     </form>
-     <div id="errorBloque" class="text-danger small mt-1"></div>
-    </div>
-    <div class="modal-footer">
-     <button class="btn btn-primary" id="btnGuardarBloque">Guardar</button>
-     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-    </div>
-   </div>
-  </div>
+ <div class="modal-dialog">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title" id="modalTitle">Crear Bloque de Evaluación</h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+ </div>
+ <div class="modal-body">
+ <form id="formBloque">
+ <input type="hidden" id="bloqueId" />
+ <div class="mb-2">
+ <label>Cuatrimestre</label>
+ <select id="cuatrimestreId" name="CuatrimestreId" class="form-select" required>
+ <option value="">Seleccione cuatrimestre</option>
+ </select>
+ </div>
+ <div class="mb-2">
+ <label>Curso</label>
+ <select id="cursoId" name="CursoId" class="form-select" required>
+ <option value="">Seleccione cuatrimestre primero</option>
+ </select>
+ </div>
+ <div class="mb-2">
+ <label>Nombre</label>
+ <input type="text" id="nombre" name="Nombre" class="form-control" required maxlength="200" />
+ </div>
+ <div class="mb-2">
+ <label>Tipo</label>
+ <select id="tipo" name="Tipo" class="form-select">
+ <option value="General">General</option>
+ <option value="Tarea">Tarea</option>
+ <option value="Parcial">Parcial</option>
+ <option value="Asistencia">Asistencia</option>
+ </select>
+ </div>
+ <div class="mb-2">
+ <label>Peso (%)</label>
+ <input type="number" step="0.01" min="0" max="100" id="peso" name="Peso" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label>Fecha Asignación</label>
+ <input type="date" id="fechaAsignacion" name="FechaAsignacion" class="form-control" />
+ </div>
+ <div id="fechasAsistenciaContainer" style="display:none;">
+ <label>Fechas de Asistencia</label>
+ <div id="fechasAsistencia"></div>
+ <button type="button" id="addFecha" class="btn btn-sm btn-secondary mt-1">Agregar Fecha</button>
+ </div>
+ </form>
+ <div id="errorBloque" class="text-danger small mt-1"></div>
+ </div>
+ <div class="modal-footer">
+ <button class="btn btn-primary" id="btnGuardarBloque">Guardar</button>
+ <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+ </div>
+ </div>
+ </div>
  </div>
 
  <!-- Modal Evaluar Estudiantes -->
  <div class="modal" tabindex="-1" id="modalEvaluar">
-  <div class="modal-dialog modal-lg">
-   <div class="modal-content">
-    <div class="modal-header">
-     <h5 class="modal-title">Evaluar Estudiantes - <span id="bloqueNombre"></span></h5>
-     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-    </div>
-    <div class="modal-body">
-     <div id="estudiantesContainer">
-      <div class="text-center text-muted">Cargando estudiantes...</div>
-     </div>
-     <div id="errorEval" class="text-danger small mt-1"></div>
-    </div>
-    <div class="modal-footer">
-     <button class="btn btn-primary" id="btnGuardarCalificaciones">Guardar Calificaciones</button>
-     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-    </div>
-   </div>
-  </div>
+ <div class="modal-dialog modal-lg">
+ <div class="modal-content">
+ <div class="modal-header">
+ <h5 class="modal-title">Evaluar Estudiantes - <span id="bloqueNombre"></span></h5>
+ <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+ </div>
+ <div class="modal-body">
+ <div id="estudiantesContainer">
+ <div class="text-center text-muted">Cargando estudiantes...</div>
+ </div>
+ <div id="errorEval" class="text-danger small mt-1"></div>
+ </div>
+ <div class="modal-footer">
+ <button class="btn btn-primary" id="btnGuardarCalificaciones">Guardar Calificaciones</button>
+ <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+ </div>
+ </div>
+ </div>
  </div>
 
 </div>
@@ -117,336 +118,417 @@
 @section Scripts{
  <script>
  (function(){
-  const filtroCurso = document.getElementById('filtroCurso');
-  const filtroCuatrimestre = document.getElementById('filtroCuatrimestre');
-  const btnFiltrar = document.getElementById('btnFiltrar');
-  const btnCrearBloque = document.getElementById('btnCrearBloque');
-  const bloquesContainer = document.getElementById('bloquesContainer');
-  const modalBloque = new bootstrap.Modal(document.getElementById('modalBloque'));
-  const modalEvaluar = new bootstrap.Modal(document.getElementById('modalEvaluar'));
-  const formBloque = document.getElementById('formBloque');
-  const estudiantesContainer = document.getElementById('estudiantesContainer');
-  const tipoSelect = document.getElementById('tipo');
+ const filtroCurso = document.getElementById('filtroCurso');
+ const filtroCuatrimestre = document.getElementById('filtroCuatrimestre');
+ const btnFiltrar = document.getElementById('btnFiltrar');
+ const btnCrearBloque = document.getElementById('btnCrearBloque');
+ const btnCalcularFinal = document.getElementById('btnCalcularFinal');
+ // hide by default (safety)
+ btnCalcularFinal.style.display = 'none';
+ const bloquesContainer = document.getElementById('bloquesContainer');
+ const modalBloque = new bootstrap.Modal(document.getElementById('modalBloque'));
+ const modalEvaluar = new bootstrap.Modal(document.getElementById('modalEvaluar'));
+ const formBloque = document.getElementById('formBloque');
+ const estudiantesContainer = document.getElementById('estudiantesContainer');
+ const tipoSelect = document.getElementById('tipo');
 
-  let cursos = [];
-  let cuatrimestres = [];
-  let currentBloqueId = null;
-  let currentBloqueTipo = '';
-  let fechas = [];
+ let cursos = [];
+ let cuatrimestres = [];
+ let currentBloqueId = null;
+ let currentBloqueTipo = '';
+ let fechas = [];
+ let lastLoadedBloques = [];
 
-  // Cargar filtros iniciales
-  cargarCuatrimestres();
-  cargarBloques();
+ // Cargar filtros iniciales
+ cargarCuatrimestres();
+ cargarBloques();
 
-  btnFiltrar.addEventListener('click', cargarBloques);
-  btnCrearBloque.addEventListener('click', async () => await abrirModalBloque());
-  filtroCuatrimestre.addEventListener('change', () => {
-   cargarCursos();
-   cargarBloques();
-  });
-  document.getElementById('btnGuardarBloque').addEventListener('click', guardarBloque);
-  document.getElementById('btnGuardarCalificaciones').addEventListener('click', guardarCalificaciones);
-  tipoSelect.addEventListener('change', () => {
-   const container = document.getElementById('fechasAsistenciaContainer');
-   if(tipoSelect.value === 'Asistencia') {
-    container.style.display = 'block';
-   } else {
-    container.style.display = 'none';
-   }
-  });
-  document.getElementById('addFecha').addEventListener('click', () => {
-   const container = document.getElementById('fechasAsistencia');
-   const div = document.createElement('div');
-   div.className = 'mb-2';
-   div.innerHTML = `<input type="date" name="fechas[]" class="form-control d-inline-block w-auto" /> <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">Eliminar</button>`;
-   container.appendChild(div);
-  });
+ btnFiltrar.addEventListener('click', cargarBloques);
+ btnCrearBloque.addEventListener('click', async () => await abrirModalBloque());
+ btnCalcularFinal.addEventListener('click', calcularNotaFinal);
+ filtroCuatrimestre.addEventListener('change', () => {
+ cargarCursos();
+ cargarBloques();
+ });
+ document.getElementById('btnGuardarBloque').addEventListener('click', guardarBloque);
+ document.getElementById('btnGuardarCalificaciones').addEventListener('click', guardarCalificaciones);
+ tipoSelect.addEventListener('change', () => {
+ const container = document.getElementById('fechasAsistenciaContainer');
+ if(tipoSelect.value === 'Asistencia') {
+ container.style.display = 'block';
+ } else {
+ container.style.display = 'none';
+ }
+ });
+ document.getElementById('addFecha').addEventListener('click', () => {
+ const container = document.getElementById('fechasAsistencia');
+ const div = document.createElement('div');
+ div.className = 'mb-2';
+ div.innerHTML = `<input type="date" name="fechas[]" class="form-control d-inline-block w-auto" /> <button type="button" class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">Eliminar</button>`;
+ container.appendChild(div);
+ });
 
-  async function cargarCursos(){
-   const cuatrimestreId = filtroCuatrimestre.value;
-   if(!cuatrimestreId){
-    filtroCurso.innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
-    document.getElementById('cursoId').innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
-    return;
-   }
-   let url = '/api/cursos?cuatrimestreId=' + cuatrimestreId;
-   try{
-    const r = await fetch(url, { credentials: 'include' });
-    if(r.ok){
-     cursos = await r.json();
-     filtroCurso.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-     document.getElementById('cursoId').innerHTML = '<option value="">Seleccione curso</option>' + cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-    }
-   }catch(e){ console.error(e); }
-  }
+ async function cargarCursos(){
+ const cuatrimestreId = filtroCuatrimestre.value;
+ if(!cuatrimestreId){
+ filtroCurso.innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
+ document.getElementById('cursoId').innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
+ return;
+ }
+ let url = '/api/cursos?cuatrimestreId=' + cuatrimestreId;
+ try{
+ const r = await fetch(url, { credentials: 'include' });
+ if(r.ok){
+ cursos = await r.json();
+ filtroCurso.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+ document.getElementById('cursoId').innerHTML = '<option value="">Seleccione curso</option>' + cursos.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ }catch(e){ console.error(e); }
+ }
 
-  async function cargarCuatrimestres(){
-   try{
-    const r = await fetch('/api/catalogo/cuatrimestres', { credentials: 'include' });
-    if(r.ok){
-     cuatrimestres = await r.json();
-     filtroCuatrimestre.innerHTML = '<option value="">Todos los cuatrimestres</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-     document.getElementById('cuatrimestreId').innerHTML = '<option value="">Seleccione cuatrimestre</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-    }
-   }catch(e){ console.error(e); }
-  }
+ async function cargarCuatrimestres(){
+ try{
+ const r = await fetch('/api/catalogo/cuatrimestres', { credentials: 'include' });
+ if(r.ok){
+ cuatrimestres = await r.json();
+ filtroCuatrimestre.innerHTML = '<option value="">Todos los cuatrimestres</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+ document.getElementById('cuatrimestreId').innerHTML = '<option value="">Seleccione cuatrimestre</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ }catch(e){ console.error(e); }
+ }
 
-  async function cargarBloques(){
-   const cursoId = filtroCurso.value;
-   const cuatrimestreId = filtroCuatrimestre.value;
-   let url = '/api/bloques';
-   if(cursoId || cuatrimestreId){
-    url += `?${cursoId ? 'cursoId=' + cursoId : ''}${cuatrimestreId ? '&cuatrimestreId=' + cuatrimestreId : ''}`;
-   }
-   try{
-    const r = await fetch(url, { credentials: 'include' });
-    if(r.ok){
-     const list = await r.json();
-     renderBloques(list);
-    }else{
-     bloquesContainer.innerHTML = '<div class="text-danger">Error al cargar bloques</div>';
-    }
-   }catch(e){ console.error(e); }
-  }
+ async function cargarBloques(){
+ const cursoId = filtroCurso.value;
+ const cuatrimestreId = filtroCuatrimestre.value;
+ let url = '/api/bloques';
+ if(cursoId || cuatrimestreId){
+ url += `?${cursoId ? 'cursoId=' + cursoId : ''}${cuatrimestreId ? '&cuatrimestreId=' + cuatrimestreId : ''}`;
+ }
+ try{
+ const r = await fetch(url, { credentials: 'include' });
+ if(r.ok){
+ const list = await r.json();
+ lastLoadedBloques = list || [];
+ renderBloques(list);
+ // Show calcular button only when a course is selected and there are bloques
+ if(cursoId && list && list.length){
+ btnCalcularFinal.style.display = '';
+ } else {
+ btnCalcularFinal.style.display = 'none';
+ }
+ }else{
+ bloquesContainer.innerHTML = '<div class="text-danger">Error al cargar bloques</div>';
+ btnCalcularFinal.style.display = 'none';
+ }
+ }catch(e){ console.error(e); btnCalcularFinal.style.display = 'none'; }
+ }
 
-  function renderBloques(list){
-   if(!list.length){
-    bloquesContainer.innerHTML = '<div class="text-muted">No hay bloques de evaluación</div>';
-    return;
-   }
-   bloquesContainer.innerHTML = `
-    <table class="table table-striped">
-     <thead><tr><th>Nombre</th><th>Tipo</th><th>Peso</th><th>Fecha Creación</th><th>Acciones</th></tr></thead>
-     <tbody>
-      ${list.map(b => `
-       <tr>
-        <td>${b.nombre}</td>
-        <td>${b.tipo}</td>
-        <td>${b.peso ? b.peso + '%' : 'N/A'}</td>
-        <td>${new Date(b.fechaCreacion).toLocaleDateString()}</td>
-        <td>
-         <button class="btn btn-sm btn-primary me-1" onclick="evaluarBloque(${b.id}, '${b.nombre}', '${b.tipo}')">Evaluar</button>
-         <button class="btn btn-sm btn-warning me-1" onclick="editarBloque(${b.id})">Editar</button>
-         <button class="btn btn-sm btn-danger" onclick="eliminarBloque(${b.id})">Eliminar</button>
-        </td>
-       </tr>
-      `).join('')}
-     </tbody>
-    </table>
-   `;
-  }
+ function renderBloques(list){
+ if(!list.length){
+ bloquesContainer.innerHTML = '<div class="text-muted">No hay bloques de evaluación</div>';
+ return;
+ }
+ bloquesContainer.innerHTML = `
+ <table class="table table-striped">
+ <thead><tr><th>Nombre</th><th>Tipo</th><th>Peso</th><th>Fecha Creación</th><th>Acciones</th></tr></thead>
+ <tbody>
+ ${list.map(b => `
+ <tr>
+ <td>${b.nombre}</td>
+ <td>${b.tipo}</td>
+ <td>${b.peso ? b.peso + '%' : 'N/A'}</td>
+ <td>${new Date(b.fechaCreacion).toLocaleDateString()}</td>
+ <td>
+ <button class="btn btn-sm btn-primary me-1" onclick="evaluarBloque(${b.id}, '${b.nombre}', '${b.tipo}')">Evaluar</button>
+ <button class="btn btn-sm btn-warning me-1" onclick="editarBloque(${b.id})">Editar</button>
+ <button class="btn btn-sm btn-danger" onclick="eliminarBloque(${b.id})">Eliminar</button>
+ </td>
+ </tr>
+ `).join('')}
+ </tbody>
+ </table>
+ `;
+ }
 
-  async function abrirModalBloque(bloque = null){
-   document.getElementById('bloqueId').value = bloque ? bloque.id : '';
-   const cuatrimestreId = bloque ? bloque.cuatrimestreId : '';
-   document.getElementById('cuatrimestreId').value = cuatrimestreId;
-   await cargarCursosModal(cuatrimestreId);
-   document.getElementById('cursoId').value = bloque ? bloque.cursoId : '';
-   document.getElementById('nombre').value = bloque ? bloque.nombre : '';
-   document.getElementById('tipo').value = bloque ? bloque.tipo : 'General';
-   document.getElementById('peso').value = bloque ? bloque.peso : '';
-   document.getElementById('fechaAsignacion').value = bloque ? bloque.fechaAsignacion : '';
-   document.getElementById('modalTitle').textContent = bloque ? 'Editar Bloque' : 'Crear Bloque';
-   document.getElementById('errorBloque').textContent = '';
-   document.getElementById('fechasAsistencia').innerHTML = '';
-   tipoSelect.dispatchEvent(new Event('change'));
-   modalBloque.show();
-  }
+ async function abrirModalBloque(bloque = null){
+ document.getElementById('bloqueId').value = bloque ? bloque.id : '';
+ const cuatrimestreId = bloque ? bloque.cuatrimestreId : '';
+ document.getElementById('cuatrimestreId').value = cuatrimestreId;
+ await cargarCursosModal(cuatrimestreId);
+ document.getElementById('cursoId').value = bloque ? bloque.cursoId : '';
+ document.getElementById('nombre').value = bloque ? bloque.nombre : '';
+ document.getElementById('tipo').value = bloque ? bloque.tipo : 'General';
+ document.getElementById('peso').value = bloque ? bloque.peso : '';
+ document.getElementById('fechaAsignacion').value = bloque ? bloque.fechaAsignacion : '';
+ document.getElementById('modalTitle').textContent = bloque ? 'Editar Bloque' : 'Crear Bloque';
+ document.getElementById('errorBloque').textContent = '';
+ document.getElementById('fechasAsistencia').innerHTML = '';
+ tipoSelect.dispatchEvent(new Event('change'));
+ modalBloque.show();
+ }
 
-  async function guardarBloque(){
-   const dto = {
-    CursoId: parseInt(document.getElementById('cursoId').value),
-    CuatrimestreId: parseInt(document.getElementById('cuatrimestreId').value),
-    Nombre: document.getElementById('nombre').value,
-    Tipo: document.getElementById('tipo').value,
-    Peso: document.getElementById('peso').value ? parseFloat(document.getElementById('peso').value) : null,
-    FechaAsignacion: document.getElementById('fechaAsignacion').value ? new Date(document.getElementById('fechaAsignacion').value).toISOString() : null,
-    FechasAsistencia: tipoSelect.value === 'Asistencia' ? Array.from(document.querySelectorAll('input[name="fechas[]"]')).map(i => new Date(i.value).toISOString()).filter(d => d) : null
-     };
-   const id = document.getElementById('bloqueId').value;
-   const method = id ? 'PUT' : 'POST';
-   const url = id ? `/api/bloques/${id}` : '/api/bloques';
-   try{
-    const r = await fetch(url, { method, credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dto) });
-    if(r.ok){
-     modalBloque.hide();
-     cargarBloques();
-    }else{
-     const err = await r.json();
-     document.getElementById('errorBloque').textContent = err.message || 'Error';
-    }
-   }catch(e){ document.getElementById('errorBloque').textContent = e.message; }
-  }
+ async function guardarBloque(){
+ const dto = {
+ CursoId: parseInt(document.getElementById('cursoId').value),
+ CuatrimestreId: parseInt(document.getElementById('cuatrimestreId').value),
+ Nombre: document.getElementById('nombre').value,
+ Tipo: document.getElementById('tipo').value,
+ Peso: document.getElementById('peso').value ? parseFloat(document.getElementById('peso').value) : null,
+ FechaAsignacion: document.getElementById('fechaAsignacion').value ? new Date(document.getElementById('fechaAsignacion').value).toISOString() : null,
+ FechasAsistencia: tipoSelect.value === 'Asistencia' ? Array.from(document.querySelectorAll('input[name="fechas[]"]')).map(i => new Date(i.value).toISOString()).filter(d => d) : null
+ };
+ const id = document.getElementById('bloqueId').value;
+ const method = id ? 'PUT' : 'POST';
+ const url = id ? `/api/bloques/${id}` : '/api/bloques';
+ try{
+ const r = await fetch(url, { method, credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dto) });
+ if(r.ok){
+ modalBloque.hide();
+ cargarBloques();
+ }else{
+ const err = await r.json();
+ document.getElementById('errorBloque').textContent = err.message || 'Error';
+ }
+ }catch(e){ document.getElementById('errorBloque').textContent = e.message; }
+ }
 
-  window.evaluarBloque = function(id, nombre, tipo){
-   currentBloqueId = id;
-   currentBloqueTipo = tipo;
-   document.getElementById('bloqueNombre').textContent = nombre;
-   cargarEstudiantes(id);
-   modalEvaluar.show();
-  };
+ window.evaluarBloque = function(id, nombre, tipo){
+ currentBloqueId = id;
+ currentBloqueTipo = tipo;
+ document.getElementById('bloqueNombre').textContent = nombre;
+ cargarEstudiantes(id);
+ modalEvaluar.show();
+ };
 
-  async function cargarEstudiantes(bloqueId){
-   try{
-    const r = await fetch(`/api/bloques/${bloqueId}/alumnos`, { credentials: 'include' });
-    if(r.ok){
-     const list = await r.json();
-     // Fetch existing calificaciones
-     const rCal = await fetch(`/api/bloques/${bloqueId}/calificaciones`, { credentials: 'include' });
-     let calificaciones = [];
-     if(rCal.ok){
-      calificaciones = await rCal.json();
-     }
-     const calDict = calificaciones.reduce((dict, cal) => { dict[cal.matriculaId] = cal; return dict; }, {});
-     if(currentBloqueTipo == "Asistencia"){
-      await cargarFechas(bloqueId);
-      estudiantesContainer.innerHTML = list.map(e => {
-       const cal = calDict[e.id];
-       return `
-        <div class="mb-2 border p-2">
-         <strong>${e.nombre}</strong>
-         <input type="hidden" name="matriculaIds[]" value="${e.id}" />
-         <div>Asistencias: ${fechas.map(f => `<label><input type="checkbox" name="asistencias[${e.id}][]" value="${f.id}" ${cal && cal.asistencias && cal.asistencias.includes(f.id) ? 'checked' : ''}> ${new Date(f.fecha).toLocaleDateString()}</label><br>`).join('')}</div>
-         <div>Nota calculada: <span id="nota-${e.id}">${cal ? cal.nota : 0}</span>%</div>
-         <div class="row mt-2">
-          <div class="col-md-3">
-           <select name="estados[]" class="form-select" required>
-            <option value="Aprobado" ${cal && cal.estado == 'Aprobado' ? 'selected' : ''}>Aprobado</option>
-            <option value="Reprobado" ${cal && cal.estado == 'Reprobado' ? 'selected' : ''}>Reprobado</option>
-           </select>
-          </div>
-          <div class="col-md-9">
-           <input type="text" name="observaciones[]" class="form-control" placeholder="Observaciones" value="${cal ? cal.observaciones : ''}" />
-          </div>
-         </div>
-        </div>
-       `;
-      }).join('');
-      // Agregar eventos
-      document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-       cb.addEventListener('change', () => {
-        const matriculaId = cb.name.match(/\[(\d+)\]/)[1];
-        const checked = document.querySelectorAll(`input[name="asistencias[${matriculaId}][]"]:checked`).length;
-        const total = fechas.length;
-        const nota = total > 0 ? (checked / total * 100).toFixed(2) : 0;
-        document.getElementById(`nota-${matriculaId}`).textContent = nota;
-       });
-      });
-     }else{
-      estudiantesContainer.innerHTML = list.map(e => {
-       const cal = calDict[e.id];
-       return `
-        <div class="mb-2 border p-2">
-         <strong>${e.nombre}</strong>
-         <input type="hidden" name="matriculaIds[]" value="${e.id}" />
-         <div class="row mt-2">
-          <div class="col-md-3">
-           <input type="number" step="0.01" min="0" max="100" name="notas[]" class="form-control" placeholder="Nota" required value="${cal ? cal.nota : ''}" />
-          </div>
-          <div class="col-md-3">
-           <select name="estados[]" class="form-select" required>
-            <option value="Aprobado" ${cal && cal.estado == 'Aprobado' ? 'selected' : ''}>Aprobado</option>
-            <option value="Reprobado" ${cal && cal.estado == 'Reprobado' ? 'selected' : ''}>Reprobado</option>
-           </select>
-          </div>
-          <div class="col-md-6">
-           <input type="text" name="observaciones[]" class="form-control" placeholder="Observaciones" value="${cal ? cal.observaciones : ''}" />
-          </div>
-         </div>
-        </div>
-       `;
-      }).join('');
-     }
-    }else{
-     estudiantesContainer.innerHTML = '<div class="text-danger">Error al cargar estudiantes</div>';
-    }
-   }catch(e){ console.error(e); }
-  }
+ async function cargarEstudiantes(bloqueId){
+ try{
+ const r = await fetch(`/api/bloques/${bloqueId}/alumnos`, { credentials: 'include' });
+ if(r.ok){
+ const list = await r.json();
+ // Fetch existing calificaciones
+ const rCal = await fetch(`/api/bloques/${bloqueId}/calificaciones`, { credentials: 'include' });
+ let calificaciones = [];
+ if(rCal.ok){
+ calificaciones = await rCal.json();
+ }
+ const calDict = calificaciones.reduce((dict, cal) => { dict[cal.matriculaId] = cal; return dict; }, {});
+ if(currentBloqueTipo == "Asistencia"){
+ await cargarFechas(bloqueId);
+ estudiantesContainer.innerHTML = list.map(e => {
+ const cal = calDict[e.id];
+ return `
+ <div class="mb-2 border p-2">
+ <strong>${e.nombre}</strong>
+ <input type="hidden" name="matriculaIds[]" value="${e.id}" />
+ <div>Asistencias: ${fechas.map(f => `<label><input type="checkbox" name="asistencias[${e.id}][]" value="${f.id}" ${cal && cal.asistencias && cal.asistencias.includes(f.id) ? 'checked' : ''}> ${new Date(f.fecha).toLocaleDateString()}</label><br>`).join('')}</div>
+ <div>Nota calculada: <span id="nota-${e.id}">${cal ? cal.nota :0}</span>%</div>
+ <div class="row mt-2">
+ <div class="col-md-3">
+ <select name="estados[]" class="form-select" required>
+ <option value="Aprobado" ${cal && cal.estado == 'Aprobado' ? 'selected' : ''}>Aprobado</option>
+ <option value="Reprobado" ${cal && cal.estado == 'Reprobado' ? 'selected' : ''}>Reprobado</option>
+ </select>
+ </div>
+ <div class="col-md-9">
+ <input type="text" name="observaciones[]" class="form-control" placeholder="Observaciones" value="${cal ? cal.observaciones : ''}" />
+ </div>
+ </div>
+ </div>
+ `;
+ }).join('');
+ // Agregar eventos
+ document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+ cb.addEventListener('change', () => {
+ const matriculaId = cb.name.match(/\[(\d+)\]/)[1];
+ const checked = document.querySelectorAll(`input[name="asistencias[${matriculaId}][]"]:checked`).length;
+ const total = fechas.length;
+ const nota = total >0 ? (checked / total *100).toFixed(2) :0;
+ document.getElementById(`nota-${matriculaId}`).textContent = nota;
+ });
+ });
+ }else{
+ estudiantesContainer.innerHTML = list.map(e => {
+ const cal = calDict[e.id];
+ return `
+ <div class="mb-2 border p-2">
+ <strong>${e.nombre}</strong>
+ <input type="hidden" name="matriculaIds[]" value="${e.id}" />
+ <div class="row mt-2">
+ <div class="col-md-3">
+ <input type="number" step="0.01" min="0" max="100" name="notas[]" class="form-control" placeholder="Nota" required value="${cal ? cal.nota : ''}" />
+ </div>
+ <div class="col-md-3">
+ <select name="estados[]" class="form-select" required>
+ <option value="Aprobado" ${cal && cal.estado == 'Aprobado' ? 'selected' : ''}>Aprobado</option>
+ <option value="Reprobado" ${cal && cal.estado == 'Reprobado' ? 'selected' : ''}>Reprobado</option>
+ </select>
+ </div>
+ <div class="col-md-6">
+ <input type="text" name="observaciones[]" class="form-control" placeholder="Observaciones" value="${cal ? cal.observaciones : ''}" />
+ </div>
+ </div>
+ </div>
+ `;
+ }).join('');
+ }
+ }else{
+ estudiantesContainer.innerHTML = '<div class="text-danger">Error al cargar estudiantes</div>';
+ }
+ }catch(e){ console.error(e); }
+ }
 
-  async function guardarCalificaciones(){
-   const matriculaIds = Array.from(document.querySelectorAll('input[name="matriculaIds[]"]')).map(i => parseInt(i.value));
-   const estados = Array.from(document.querySelectorAll('select[name="estados[]"]')).map(s => s.value);
-   const observaciones = Array.from(document.querySelectorAll('input[name="observaciones[]"]')).map(i => i.value);
+ async function guardarCalificaciones(){
+ const matriculaIds = Array.from(document.querySelectorAll('input[name="matriculaIds[]"]')).map(i => parseInt(i.value));
+ const estados = Array.from(document.querySelectorAll('select[name="estados[]"]')).map(s => s.value);
+ const observaciones = Array.from(document.querySelectorAll('input[name="observaciones[]"]')).map(i => i.value);
 
-   const items = matriculaIds.map((id, idx) => {
-    let nota;
-    let asistencias = null;
-    if(currentBloqueTipo == "Asistencia"){
-     nota = parseFloat(document.getElementById(`nota-${id}`).textContent);
-     asistencias = Array.from(document.querySelectorAll(`input[name="asistencias[${id}][]"]:checked`)).map(cb => parseInt(cb.value));
-    }else{
-     const notas = Array.from(document.querySelectorAll('input[name="notas[]"]')).map(i => parseFloat(i.value));
-     nota = notas[idx];
-    }
-    const estados = Array.from(document.querySelectorAll('select[name="estados[]"]')).map(s => s.value);
-    const observaciones = Array.from(document.querySelectorAll('input[name="observaciones[]"]')).map(i => i.value);
-    return {
-     MatriculaId: id,
-     Nota: nota,
-     Estado: estados[idx],
-     Observaciones: observaciones[idx],
-     Asistencias: asistencias
-    };
-   }).filter(i => !isNaN(i.Nota));
+ const items = matriculaIds.map((id, idx) => {
+ let nota;
+ let asistencias = null;
+ if(currentBloqueTipo == "Asistencia"){
+ nota = parseFloat(document.getElementById(`nota-${id}`).textContent);
+ asistencias = Array.from(document.querySelectorAll(`input[name="asistencias[${id}][]"]:checked`)).map(cb => parseInt(cb.value));
+ }else{
+ const notas = Array.from(document.querySelectorAll('input[name="notas[]"]')).map(i => parseFloat(i.value));
+ nota = notas[idx];
+ }
+ const estados = Array.from(document.querySelectorAll('select[name="estados[]"]')).map(s => s.value);
+ const observaciones = Array.from(document.querySelectorAll('input[name="observaciones[]"]')).map(i => i.value);
+ return {
+ MatriculaId: id,
+ Nota: nota,
+ Estado: estados[idx],
+ Observaciones: observaciones[idx],
+ Asistencias: asistencias
+ };
+ }).filter(i => !isNaN(i.Nota));
 
-   if(!items.length) return alert('Ingrese al menos una calificación');
+ if(!items.length) return alert('Ingrese al menos una calificación');
 
-   try{
-    const r = await fetch(`/api/bloques/${currentBloqueId}/calificaciones`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ Items: items }) });
-    if(r.ok){
-     modalEvaluar.hide();
-     alert('Calificaciones guardadas');
-    }else{
-     const err = await r.json();
-     document.getElementById('errorEval').textContent = err.message || 'Error';
-    }
-   }catch(e){ document.getElementById('errorEval').textContent = e.message; }
-  }
+ try{
+ const r = await fetch(`/api/bloques/${currentBloqueId}/calificaciones`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ Items: items }) });
+ if(r.ok){
+ modalEvaluar.hide();
+ alert('Calificaciones guardadas');
+ }else{
+ const err = await r.json();
+ document.getElementById('errorEval').textContent = err.message || 'Error';
+ }
+ }catch(e){ document.getElementById('errorEval').textContent = e.message; }
+ }
 
-  window.editarBloque = function(id){ alert('Editar no implementado aún - usa la tabla para referencia'); };
+ window.editarBloque = function(id){ alert('Editar no implementado aún - usa la tabla para referencia'); };
 
-  window.eliminarBloque = async function(id){
-   if(!confirm('¿Eliminar este bloque?')) return;
-   try{
-    const r = await fetch(`/api/bloques/${id}`, { method: 'DELETE', credentials: 'include' });
-    if(r.ok){
-     cargarBloques();
-    }else{
-     alert('Error al eliminar');
-    }
-   }catch(e){ console.error(e); }
-  };
+ window.eliminarBloque = async function(id){
+ if(!confirm('¿Eliminar este bloque?')) return;
+ try{
+ const r = await fetch(`/api/bloques/${id}`, { method: 'DELETE', credentials: 'include' });
+ if(r.ok){
+ cargarBloques();
+ }else{
+ alert('Error al eliminar');
+ }
+ }catch(e){ console.error(e); }
+ };
 
-  document.getElementById('cuatrimestreId').addEventListener('change', () => {
-   const cuatrimestreId = document.getElementById('cuatrimestreId').value;
-   cargarCursosModal(cuatrimestreId);
-  });
+ document.getElementById('cuatrimestreId').addEventListener('change', () => {
+ const cuatrimestreId = document.getElementById('cuatrimestreId').value;
+ cargarCursosModal(cuatrimestreId);
+ });
 
-  async function cargarCursosModal(cuatrimestreId){
-   if(!cuatrimestreId){
-    document.getElementById('cursoId').innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
-    return;
-   }
-   const url = '/api/cursos?cuatrimestreId=' + cuatrimestreId;
-   try{
-    const r = await fetch(url, { credentials: 'include' });
-    if(r.ok){
-     const data = await r.json();
-     document.getElementById('cursoId').innerHTML = '<option value="">Seleccione curso</option>' + data.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
-    }
-   }catch(e){ console.error(e); }
-  }
+ async function cargarCursosModal(cuatrimestreId){
+ if(!cuatrimestreId){
+ document.getElementById('cursoId').innerHTML = '<option value="">Seleccione cuatrimestre primero</option>';
+ return;
+ }
+ const url = '/api/cursos?cuatrimestreId=' + cuatrimestreId;
+ try{
+ const r = await fetch(url, { credentials: 'include' });
+ if(r.ok){
+ const data = await r.json();
+ document.getElementById('cursoId').innerHTML = '<option value="">Seleccione curso</option>' + data.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ }catch(e){ console.error(e); }
+ }
 
-  async function cargarFechas(bloqueId){
-   try{
-    const r = await fetch(`/api/bloques/${bloqueId}/fechas`, { credentials: 'include' });
-    if(r.ok){
-     fechas = await r.json();
-    }else{
-     fechas = [];
-    }
-   }catch(e){ fechas = []; }
-  }
+ async function cargarFechas(bloqueId){
+ try{
+ const r = await fetch(`/api/bloques/${bloqueId}/fechas`, { credentials: 'include' });
+ if(r.ok){
+ fechas = await r.json();
+ }else{
+ fechas = [];
+ }
+ }catch(e){ fechas = []; }
+ }
+
+ // New: calcular nota final para el curso seleccionado
+ async function calcularNotaFinal(){
+ const cursoId = filtroCurso.value;
+ const cuatrimestreId = filtroCuatrimestre.value;
+ if(!cursoId) return alert('Seleccione un curso para calcular la nota final');
+ if(!lastLoadedBloques || !lastLoadedBloques.length) return alert('No hay evaluaciones cargadas para este curso');
+ if(!confirm('Calcular y guardar la nota final del curso seleccionado?')) return;
+ try{
+ const bloques = lastLoadedBloques;
+ // Validar peso total
+ const totalPeso = bloques.reduce((s,b) => s + (b.peso ||0),0);
+ if(Math.abs(totalPeso -100) >0.001) return alert(`Peso total de evaluaciones es ${totalPeso}%. Debe ser100% antes de calcular.`);
+ // Obtener alumnos del curso (nuevo endpoint)
+ const rAl = await fetch(`/api/cursos/${cursoId}/alumnos${cuatrimestreId ? '?cuatrimestreId=' + cuatrimestreId : ''}`, { credentials: 'include' });
+ if(!rAl.ok) throw new Error('Error al obtener alumnos');
+ const alumnos = await rAl.json();
+ if(!alumnos.length) return alert('No hay alumnos matriculados en este curso');
+ // Inicializar acumuladores y seguimiento de completitud
+ const acum = {};
+ const missing = {}; // matriculaId -> array of bloque nombres missing
+ alumnos.forEach(a => { acum[a.id] = { suma:0 }; missing[a.id] = []; });
+ // Obtener calificaciones por bloque y verificar que cada alumno tenga nota >0 en cada bloque
+ for(const b of bloques){
+ const rCal = await fetch(`/api/bloques/${b.id}/calificaciones`, { credentials: 'include' });
+ if(!rCal.ok){
+ // treat as missing all
+ alumnos.forEach(a => missing[a.id].push(b.nombre || ('Bloque ' + b.id)));
+ continue;
+ }
+ const califs = await rCal.json();
+ const calByMat = {};
+ califs.forEach(c => { calByMat[c.matriculaId] = c; });
+ alumnos.forEach(a => {
+ const c = calByMat[a.id];
+ const notaVal = c && c.nota ? parseFloat(c.nota) :0;
+ if(!c || notaVal <=0){
+ missing[a.id].push(b.nombre || ('Bloque ' + b.id));
+ } else {
+ const peso = b.peso ||0;
+ acum[a.id].suma += notaVal * peso; // nota * peso
+ }
+ });
+ }
+ // Check missing
+ const incomplete = Object.keys(missing).filter(k => missing[k] && missing[k].length>0);
+ if(incomplete.length){
+ // build message with up to first5 students
+ const lines = incomplete.slice(0,10).map(id => {
+ const a = alumnos.find(x=>x.id == id);
+ const name = a ? a.nombre : ('Matricula ' + id);
+ return `${name}: faltan evaluaciones en [${missing[id].join(', ')}]`;
+ });
+ alert('No se puede calcular. Las siguientes matrículas tienen evaluaciones incompletas:\n' + lines.join('\n'));
+ return;
+ }
+ // Construir items con nota final
+ const items = Object.keys(acum).map(k => ({ MatriculaId: parseInt(k), NotaFinal: +(acum[k].suma /100).toFixed(2) }));
+ // Enviar al servidor
+ const rSave = await fetch(`/api/cursos/${cursoId}/notaFinal`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ CuatrimestreId: cuatrimestreId ? parseInt(cuatrimestreId) : null, Items: items }) });
+ if(rSave.ok){
+ alert('Notas finales calculadas y guardadas');
+ }else{
+ const err = await rSave.json().catch(()=>({message:'Error'}));
+ alert(err.message || 'Error al guardar notas finales');
+ }
+ }catch(e){ alert(e.message || 'Error inesperado'); }
+ }
 
  })();
  </script>
