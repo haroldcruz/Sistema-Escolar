@@ -131,7 +131,7 @@ using (var scope = app.Services.CreateScope())
  {
  ctx.Database.EnsureDeleted();
  }
- ctx.Database.EnsureCreated();
+ ctx.Database.Migrate();
  DbPatcher.Apply(ctx); // aplica cambios no destructivos
  DataSeeder.Seed(ctx); // seed users if not exist
  }

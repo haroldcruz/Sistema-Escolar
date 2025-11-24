@@ -32,6 +32,8 @@ namespace SistemaEscolar.Data
         public DbSet<HorarioCurso> HorariosCurso { get; set; }
         public DbSet<BloqueEvaluacion> BloqueEvaluaciones { get; set; }
         public DbSet<CalificacionBloque> CalificacionBloques { get; set; }
+        public DbSet<BloqueFecha> BloqueFechas { get; set; }
+        public DbSet<AsistenciaBloque> AsistenciaBloques { get; set; }
 
         // Nuevas entidades: Instrumentos y Asistencias
         public DbSet<InstrumentoEvaluacion> InstrumentosEvaluacion { get; set; }
@@ -172,6 +174,24 @@ namespace SistemaEscolar.Data
                 .WithMany()
                 .HasForeignKey(cb => cb.MatriculaId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<BloqueFecha>()
+                .HasOne(bf => bf.BloqueEvaluacion)
+                .WithMany(b => b.Fechas)
+                .HasForeignKey(bf => bf.BloqueEvaluacionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AsistenciaBloque>()
+                .HasOne(ab => ab.CalificacionBloque)
+                .WithMany()
+                .HasForeignKey(ab => ab.CalificacionBloqueId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<AsistenciaBloque>()
+                .HasOne(ab => ab.BloqueFecha)
+                .WithMany()
+                .HasForeignKey(ab => ab.BloqueFechaId)
+                .OnDelete(DeleteBehavior.NoAction);
 
             // Matricula
             modelBuilder.Entity<Matricula>()

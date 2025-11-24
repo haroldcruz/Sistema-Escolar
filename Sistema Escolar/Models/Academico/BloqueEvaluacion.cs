@@ -26,8 +26,10 @@ namespace SistemaEscolar.Models.Academico
  public decimal? Peso { get; set; } // opcional
 
  public DateTime FechaCreacion { get; set; } = DateTime.UtcNow;
+ public DateTime? FechaAsignacion { get; set; }
  public int? CreadoPorId { get; set; }
 
  public List<CalificacionBloque> Calificaciones { get; set; } = new();
+ public List<BloqueFecha> Fechas { get; set; } = new();
  }
 }

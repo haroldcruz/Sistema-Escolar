@@ -14,5 +14,7 @@ namespace SistemaEscolar.DTOs.Bloques
  [MaxLength(100)]
  public string Tipo { get; set; } = "General";
  public decimal? Peso { get; set; }
+ public DateTime? FechaAsignacion { get; set; }
+ public List<DateTime>? FechasAsistencia { get; set; }
  }
 }
