@@ -181,3 +181,68 @@
  cargar();
  });
 })();
+
+// Site-wide JS helpers
+(function(){
+ function showToast(message, type){
+ const toastEl = document.getElementById('appToast');
+ if(!toastEl) return alert(message);
+ // set body
+ const body = toastEl.querySelector('.toast-body');
+ body.textContent = message;
+ // adjust classes
+ toastEl.className = toastEl.className.replace(/text-bg-(\w+)/g, '');
+ toastEl.classList.add('text-bg-' + (type || 'info'));
+ const toast = new bootstrap.Toast(toastEl, { delay:5000 });
+ toast.show();
+ }
+ // expose globally
+ window.appShowToast = showToast;
+
+ // Helper to post JSON and handle response
+ async function postJson(url){
+ const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'} });
+ if(res.ok) return await res.json();
+ let err;
+ try{ err = await res.json(); }catch(e){ err = { message: res.statusText }; }
+ throw err;
+ }
+
+ async function deleteJson(url){
+ const res = await fetch(url, { method: 'DELETE' });
+ if(res.ok) return await res.json();
+ let err;
+ try{ err = await res.json(); }catch(e){ err = { message: res.statusText }; }
+ throw err;
+ }
+
+ // Attach click handlers for elements with class .btn-assign-docente and .btn-unassign-docente
+ document.addEventListener('click', function(e){
+ const assignBtn = e.target.closest && e.target.closest('.btn-assign-docente');
+ if(assignBtn){
+ e.preventDefault();
+ const cursoId = assignBtn.getAttribute('data-curso-id');
+ const docenteId = assignBtn.getAttribute('data-docente-id');
+ if(!cursoId || !docenteId) return showToast('Datos incompletos', 'danger');
+ postJson(`/api/cursos/${cursoId}/docentes/${docenteId}`)
+ .then(j=>{ showToast(j.message || 'Docente asignado', 'success');
+ // optional: reload to reflect changes
+ setTimeout(()=> location.reload(),800);
+ })
+ .catch(err=>{ showToast(err?.message || 'Error al asignar', 'danger'); });
+ return;
+ }
+ const unassignBtn = e.target.closest && e.target.closest('.btn-unassign-docente');
+ if(unassignBtn){
+ e.preventDefault();
+ const cursoId = unassignBtn.getAttribute('data-curso-id');
+ const docenteId = unassignBtn.getAttribute('data-docente-id');
+ if(!cursoId || !docenteId) return showToast('Datos incompletos', 'danger');
+ if(!confirm('¿Confirma quitar el docente del curso?')) return;
+ deleteJson(`/api/cursos/${cursoId}/docentes/${docenteId}`)
+ .then(j=>{ showToast(j.message || 'Docente quitado', 'success'); setTimeout(()=> location.reload(),800); })
+ .catch(err=>{ showToast(err?.message || 'Error al quitar', 'danger'); });
+ return;
+ }
+ });
+})();

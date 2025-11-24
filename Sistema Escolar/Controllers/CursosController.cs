@@ -56,43 +56,52 @@ namespace SistemaEscolar.Controllers
 
  [HttpPost]
  [Authorize(Policy = "Cursos.Editar")]
+ [ValidateAntiForgeryToken]
  public async Task<IActionResult> Editar(int id, CursoUpdateDTO dto)
  {
+ if (id != dto.Id) return BadRequest();
+
  if (!ModelState.IsValid)
  {
- ViewBag.Cuatrimestres = _ctx.Cuatrimestres.AsNoTracking().OrderBy(c=>c.Nombre).ToList();
+ ViewBag.Cuatrimestres = _ctx.Cuatrimestres.OrderBy(c=>c.Nombre).ToList();
  return View(dto);
- }
- var ok = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
- if(!ok)
- {
- var tieneMatriculas = await _ctx.Matriculas.AnyAsync(m => m.CursoId == id);
- var msg = tieneMatriculas ? "No se puede cambiar el código porque hay estudiantes inscritos." : "No se pudo actualizar (código duplicado u otros).";
- ModelState.AddModelError("", msg);
- ViewBag.Cuatrimestres = _ctx.Cuatrimestres.AsNoTracking().OrderBy(c=>c.Nombre).ToList();
- return View(dto);
- }
- return RedirectToAction("Index");
  }
 
- // Vista de asignar docentes por curso se mantiene en ruta separada
- [Authorize(Policy = "Cursos.AsignarDocente")]
- public async Task<IActionResult> AsignarDocentes(int id)
+ try
  {
- var curso = await _ctx.Cursos.AsNoTracking().FirstOrDefaultAsync(c=>c.Id==id);
- if (curso==null) return NotFound();
- ViewBag.CursoId = id;
- ViewBag.CursoNombre = $"{curso.Codigo} - {curso.Nombre}";
- var docentes = await (
- from u in _ctx.Usuarios
- join ur in _ctx.UsuarioRoles on u.Id equals ur.UsuarioId
- join r in _ctx.Roles on ur.RolId equals r.Id
- where r.Nombre == "Docente"
- orderby u.Nombre
- select new { u.Id, NombreCompleto = u.Nombre + " " + u.Apellidos }
- ).Distinct().ToListAsync();
- ViewBag.Docentes = docentes;
- return View();
+ var (ok, error) = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
+ if (!ok)
+ {
+ TempData["ToastMessage"] = error ?? "No se pudo actualizar el curso. Revise los datos e intente de nuevo.";
+ TempData["ToastType"] = "danger";
+ ViewBag.Cuatrimestres = _ctx.Cuatrimestres.OrderBy(c=>c.Nombre).ToList();
+ return View(dto);
+ }
+
+ TempData["ToastMessage"] = "Curso actualizado correctamente.";
+ TempData["ToastType"] = "success";
+ return RedirectToAction("Index");
+ }
+ catch (System.Exception ex)
+ {
+ try
+ {
+ await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
+ {
+ UsuarioId = CurrentUserId(),
+ Accion = "Error actualizar curso: " + ex.Message,
+ Modulo = "Academico",
+ Ip = Ip()
+ });
+ await _ctx.SaveChangesAsync();
+ }
+ catch { }
+
+ TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
+ TempData["ToastType"] = "danger";
+ ViewBag.Cuatrimestres = _ctx.Cuatrimestres.OrderBy(c=>c.Nombre).ToList();
+ return View(dto);
+ }
  }
  }
 }

@@ -1,0 +1,33 @@
+@model SistemaEscolar.DTOs.Cursos.CursoCreateDTO
+@{ ViewBag.Title = "Crear Curso"; Layout = "/Views/Shared/_Layout.cshtml"; var cuatrimestres = ViewBag.Cuatrimestres as IEnumerable<SistemaEscolar.Models.Academico.Cuatrimestre>; }
+<h2>Crear Curso (AJAX)</h2>
+<form id="cursoCreateForm">
+ <div class="mb-2">
+ <label class="form-label">Código</label>
+ <input name="Codigo" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Nombre</label>
+ <input name="Nombre" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Descripción</label>
+ <textarea name="Descripcion" class="form-control"></textarea>
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Créditos</label>
+ <input type="number" name="Creditos" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Cuatrimestre</label>
+ <select name="CuatrimestreId" class="form-control">
+ <option value="">-- Seleccione --</option>
+ @foreach(var c in cuatrimestres){ <option value="@c.Id">@c.Nombre</option> }
+ </select>
+ </div>
+ <button class="btn btn-primary">Guardar</button>
+ <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>
+@section Scripts{
+ <script src="/js/curso-create.js"></script>
+}

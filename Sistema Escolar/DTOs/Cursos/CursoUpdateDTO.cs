@@ -5,6 +5,8 @@ namespace SistemaEscolar.DTOs.Cursos
  // Datos para actualizar curso
  public class CursoUpdateDTO
  {
+ public int Id { get; set; }
+
  [Required]
  [MaxLength(50)]
  public string Codigo { get; set; } = string.Empty;

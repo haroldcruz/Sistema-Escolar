@@ -57,8 +57,12 @@ namespace SistemaEscolar.Controllers.API
  public async Task<IActionResult> Update(int id, [FromBody] CursoUpdateDTO dto)
  {
  if (!ModelState.IsValid) return BadRequest(ModelState);
- var ok = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
- if (!ok) return NotFound(new { message = "No se pudo actualizar" });
+ var (ok, error) = await _cursos.UpdateAsync(id, dto, CurrentUserId(), Ip());
+ if (!ok)
+ {
+ // If specific error like code-change blocked or duplicate, return400 with message
+ return BadRequest(new { message = error ?? "No se pudo actualizar" });
+ }
  return Ok(new { message = "Curso actualizado" });
  }
 
@@ -71,7 +75,7 @@ namespace SistemaEscolar.Controllers.API
  var existe = await _ctx.Cursos.AnyAsync(c => c.Id == id);
  if (!existe) return NotFound(new { message = "No encontrado" });
  // Regla: si tiene matriculas ->409 con mensaje escueto
- var tieneMatriculas = await _ctx.Matriculas.AnyAsync(m => m.CursoId == id);
+ var tieneMatriculas = await _ctx.Matriculas.AnyAsync(m => m.CursoId == id && m.Activo);
  if (tieneMatriculas) return StatusCode(409, new { message = "Estudiantes matriculados" });
  // Proceder eliminación
  var ok = await _cursos.DeleteAsync(id, CurrentUserId(), Ip());

@@ -33,7 +33,7 @@ namespace SistemaEscolar.Services.Usuarios
  if (int.TryParse(val, out var id)) return id;
  }
  catch { }
- return0;
+ return 0;
  }
  private string Ip() => _http.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "0.0.0.0";
 

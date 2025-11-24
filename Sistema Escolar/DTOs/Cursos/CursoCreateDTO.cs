@@ -19,6 +19,7 @@ namespace SistemaEscolar.DTOs.Cursos
  [Range(0,50)]
  public int Creditos { get; set; }
 
- public int? CuatrimestreId { get; set; } // opcional
+ [Required]
+ public int CuatrimestreId { get; set; } // ahora obligatorio
  }
 }

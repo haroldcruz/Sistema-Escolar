@@ -112,7 +112,8 @@ builder.Services.AddAuthorization(opts =>
  "Usuarios.Gestion","Cursos.Ver","Cursos.Crear","Cursos.Editar","Cursos.Eliminar","Cursos.AsignarDocente","Historial.Ver","Bitacora.Ver","Seguridad.Gestion","Evaluaciones.Crear"
  };
  foreach (var p in permisos)
- opts.AddPolicy(p, pol => pol.RequireClaim("permiso", p));
+ // allow access if user has the permiso claim OR is in Administrator role
+ opts.AddPolicy(p, pol => pol.RequireAssertion(ctx => ctx.User.IsInRole("Administrador") || ctx.User.HasClaim("permiso", p)));
 });
 
 builder.Services.AddControllersWithViews();
