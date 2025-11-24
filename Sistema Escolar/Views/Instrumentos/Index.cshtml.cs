@@ -13,7 +13,7 @@ namespace SistemaEscolar.Pages.Instrumentos
         private readonly ApplicationDbContext _context;
         public IndexModel(ApplicationDbContext context) => _context = context;
 
-        public IList<InstrumentoEvaluacion> Instrumentos { get; set; }
+        public IList<InstrumentoEvaluacion>? Instrumentos { get; set; }
 
         public async Task OnGetAsync()
         {

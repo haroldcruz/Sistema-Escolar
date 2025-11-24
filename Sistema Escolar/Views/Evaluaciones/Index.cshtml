@@ -1,41 +1,106 @@
 @{
- ViewBag.Title = "Evaluaciones";
+ ViewBag.Title = "Bloques de Evaluación";
  Layout = "/Views/Shared/_Layout.cshtml";
 }
 <div class="p-4">
- <h3>Evaluaciones - Buscar Estudiante y Evaluar</h3>
- <div class="row g-3">
- <div class="col-md-6">
- <label>Buscar estudiante</label>
- <input id="txtBuscar" class="form-control" placeholder="Nombre, apellido o identificación" />
- <div id="sugerencias" class="list-group mt-1"></div>
- </div>
- <div class="col-md-6">
- <h5>Detalles del estudiante</h5>
- <div id="detalleEstudiante" class="border rounded p-2">Seleccione un estudiante...</div>
- </div>
- </div>
- <hr />
- <div id="matriculasContainer" class="mt-3"></div>
+ <h3>Bloques de Evaluación - Gestionar Evaluaciones por Curso</h3>
 
- <!-- Modal evaluación (reutilizada si se abre desde matrícula) -->
+ <!-- Filtros -->
+ <div class="row g-3 mb-3">
+  <div class="col-md-4">
+   <label>Curso</label>
+   <select id="filtroCurso" class="form-select">
+    <option value="">Todos los cursos</option>
+   </select>
+  </div>
+  <div class="col-md-4">
+   <label>Cuatrimestre</label>
+   <select id="filtroCuatrimestre" class="form-select">
+    <option value="">Todos los cuatrimestres</option>
+   </select>
+  </div>
+  <div class="col-md-4 d-flex align-items-end">
+   <button id="btnFiltrar" class="btn btn-primary me-2">Filtrar</button>
+   <button id="btnCrearBloque" class="btn btn-success">Crear Bloque</button>
+  </div>
+ </div>
+
+ <!-- Tabla de Bloques -->
+ <div id="bloquesContainer">
+  <div class="text-center text-muted">Cargando bloques...</div>
+ </div>
+
+ <!-- Modal Crear/Editar Bloque -->
+ <div class="modal" tabindex="-1" id="modalBloque">
+  <div class="modal-dialog">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title" id="modalTitle">Crear Bloque de Evaluación</h5>
+     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+     <form id="formBloque">
+      <input type="hidden" id="bloqueId" />
+      <div class="mb-2">
+       <label>Curso</label>
+       <select id="cursoId" name="CursoId" class="form-select" required>
+        <option value="">Seleccione curso</option>
+       </select>
+      </div>
+      <div class="mb-2">
+       <label>Cuatrimestre</label>
+       <select id="cuatrimestreId" name="CuatrimestreId" class="form-select" required>
+        <option value="">Seleccione cuatrimestre</option>
+       </select>
+      </div>
+      <div class="mb-2">
+       <label>Nombre</label>
+       <input type="text" id="nombre" name="Nombre" class="form-control" required maxlength="200" />
+      </div>
+      <div class="mb-2">
+       <label>Tipo</label>
+       <select id="tipo" name="Tipo" class="form-select">
+        <option value="General">General</option>
+        <option value="Tarea">Tarea</option>
+        <option value="Parcial">Parcial</option>
+        <option value="Asistencia">Asistencia</option>
+       </select>
+      </div>
+      <div class="mb-2">
+       <label>Peso (%)</label>
+       <input type="number" step="0.01" min="0" max="100" id="peso" name="Peso" class="form-control" />
+      </div>
+     </form>
+     <div id="errorBloque" class="text-danger small mt-1"></div>
+    </div>
+    <div class="modal-footer">
+     <button class="btn btn-primary" id="btnGuardarBloque">Guardar</button>
+     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    </div>
+   </div>
+  </div>
+ </div>
+
+ <!-- Modal Evaluar Estudiantes -->
  <div class="modal" tabindex="-1" id="modalEvaluar">
- <div class="modal-dialog">
- <div class="modal-content">
- <div class="modal-header"><h5 class="modal-title">Agregar Evaluación</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
- <div class="modal-body">
- <form id="formEvaluacion">
- <input type="hidden" id="matriculaId" name="MatriculaId" />
- <div class="mb-2"><label>Nota</label><input type="number" step="0.01" min="0" max="100" id="nota" name="Nota" class="form-control" required /></div>
- <div class="mb-2"><label>Participación</label><input type="text" id="participacion" name="Participacion" class="form-control" required /></div>
- <div class="mb-2"><label>Estado</label><select id="estado" name="Estado" class="form-select" required><option value="Aprobado">Aprobado</option><option value="Reprobado">Reprobado</option></select></div>
- <div class="mb-2"><label>Observaciones</label><textarea id="observaciones" name="Observaciones" class="form-control"></textarea></div>
- </form>
- <div id="errorEval" class="text-danger small mt-1"></div>
- </div>
- <div class="modal-footer"><button class="btn btn-primary" id="btnGuardar">Guardar</button><button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button></div>
- </div>
- </div>
+  <div class="modal-dialog modal-lg">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h5 class="modal-title">Evaluar Estudiantes - <span id="bloqueNombre"></span></h5>
+     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    </div>
+    <div class="modal-body">
+     <div id="estudiantesContainer">
+      <div class="text-center text-muted">Cargando estudiantes...</div>
+     </div>
+     <div id="errorEval" class="text-danger small mt-1"></div>
+    </div>
+    <div class="modal-footer">
+     <button class="btn btn-primary" id="btnGuardarCalificaciones">Guardar Calificaciones</button>
+     <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+    </div>
+   </div>
+  </div>
  </div>
 
 </div>
@@ -43,83 +108,210 @@
 @section Scripts{
  <script>
  (function(){
- const txt = document.getElementById('txtBuscar');
- const sugerencias = document.getElementById('sugerencias');
- const detalle = document.getElementById('detalleEstudiante');
- const matriculasContainer = document.getElementById('matriculasContainer');
- const modal = new bootstrap.Modal(document.getElementById('modalEvaluar'));
+  const filtroCurso = document.getElementById('filtroCurso');
+  const filtroCuatrimestre = document.getElementById('filtroCuatrimestre');
+  const btnFiltrar = document.getElementById('btnFiltrar');
+  const btnCrearBloque = document.getElementById('btnCrearBloque');
+  const bloquesContainer = document.getElementById('bloquesContainer');
+  const modalBloque = new bootstrap.Modal(document.getElementById('modalBloque'));
+  const modalEvaluar = new bootstrap.Modal(document.getElementById('modalEvaluar'));
+  const formBloque = document.getElementById('formBloque');
+  const estudiantesContainer = document.getElementById('estudiantesContainer');
 
- let debounceTimer = null;
+  let cursos = [];
+  let cuatrimestres = [];
+  let currentBloqueId = null;
 
- txt.addEventListener('input', ()=>{
- clearTimeout(debounceTimer);
- debounceTimer = setTimeout(()=> buscar(txt.value),300);
- });
+  // Cargar filtros iniciales
+  cargarCursos();
+  cargarCuatrimestres();
+  cargarBloques();
 
- async function buscar(term){
- if (!term || term.trim().length <2){ sugerencias.innerHTML = ''; return; }
- try{
- const r = await fetch('/api/estudiantes/buscar?term=' + encodeURIComponent(term), { credentials: 'include' });
- if (!r.ok) { console.error('Error búsqueda', r.status); return; }
- const list = await r.json();
- sugerencias.innerHTML = '';
- list.forEach(s=>{
- const a = document.createElement('a');
- a.className = 'list-group-item list-group-item-action';
- a.href = '#';
- a.textContent = s.nombreCompleto + ' — ' + s.identificacion;
- a.dataset.id = s.id;
- a.addEventListener('click', ev=>{ ev.preventDefault(); seleccionarEstudiante(s); });
- sugerencias.appendChild(a);
- });
- } catch(e){ console.error(e); }
- }
+  btnFiltrar.addEventListener('click', cargarBloques);
+  btnCrearBloque.addEventListener('click', () => abrirModalBloque());
+  document.getElementById('btnGuardarBloque').addEventListener('click', guardarBloque);
+  document.getElementById('btnGuardarCalificaciones').addEventListener('click', guardarCalificaciones);
 
- function seleccionarEstudiante(s){
- sugerencias.innerHTML = '';
- txt.value = s.nombreCompleto;
- detalle.innerHTML = `<strong>${s.nombreCompleto}</strong><br/>ID: ${s.id}<br/>Email: ${s.email}<br/>Identificación: ${s.identificacion}`;
- // cargar matriculas del estudiante en cursos del docente
- cargarMatriculas(s.id);
- }
+  async function cargarCursos(){
+   try{
+    const r = await fetch('/api/cursos', { credentials: 'include' });
+    if(r.ok){
+     cursos = await r.json();
+     filtroCurso.innerHTML = '<option value="">Todos los cursos</option>' + cursos.map(c => `<option value="${c.id}">${c.codigo} - ${c.nombre}</option>`).join('');
+     document.getElementById('cursoId').innerHTML = '<option value="">Seleccione curso</option>' + cursos.map(c => `<option value="${c.id}">${c.codigo} - ${c.nombre}</option>`).join('');
+    }
+   }catch(e){ console.error(e); }
+  }
 
- async function cargarMatriculas(estudianteId){
- try{
- const r = await fetch(`/api/evaluaciones/estudiante/${estudianteId}/matriculas`, { credentials: 'include' });
- if (!r.ok){ matriculasContainer.innerHTML = '<div class="text-danger">No tiene matrículas en sus cursos o no autorizado.</div>'; return; }
- const list = await r.json();
- if (!list.length){ matriculasContainer.innerHTML = '<div class="text-muted">No hay matrículas en sus cursos.</div>'; return; }
- matriculasContainer.innerHTML = '<h5>Matriculas en mis cursos</h5>' + list.map(m=>`<div class="card mb-2"><div class="card-body"><strong>${m.cursoCodigo} - ${m.cursoNombre}</strong><br/>Cuatrimestre: ${m.cuatrimestre}<br/><button class="btn btn-sm btn-primary mt-2" data-mat="${m.matriculaId}">Evaluar</button></div></div>`).join('');
- // bind botones evaluar
- matriculasContainer.querySelectorAll('button[data-mat]').forEach(b=> b.addEventListener('click', ev=>{ document.getElementById('matriculaId').value = ev.currentTarget.getAttribute('data-mat'); modal.show(); }));
- } catch(e){ console.error(e); }
- }
+  async function cargarCuatrimestres(){
+   try{
+    const r = await fetch('/api/catalogo/cuatrimestres', { credentials: 'include' });
+    if(r.ok){
+     cuatrimestres = await r.json();
+     filtroCuatrimestre.innerHTML = '<option value="">Todos los cuatrimestres</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+     document.getElementById('cuatrimestreId').innerHTML = '<option value="">Seleccione cuatrimestre</option>' + cuatrimestres.map(c => `<option value="${c.id}">${c.nombre}</option>`).join('');
+    }
+   }catch(e){ console.error(e); }
+  }
 
- // Guardar evaluación
- document.getElementById('btnGuardar').addEventListener('click', async ()=>{
- document.getElementById('errorEval').textContent = '';
- const dto = {
- MatriculaId: parseInt(document.getElementById('matriculaId').value),
- Nota: parseFloat(document.getElementById('nota').value),
- Participacion: document.getElementById('participacion').value,
- Estado: document.getElementById('estado').value,
- Observaciones: document.getElementById('observaciones').value
- };
- // client validation
- if (isNaN(dto.Nota) || dto.Nota <0 || dto.Nota >100){ document.getElementById('errorEval').textContent = 'La nota debe estar entre0 y100'; return; }
- if (!dto.Participacion) { document.getElementById('errorEval').textContent = 'La participación es requerida'; return; }
- try{
- const r = await fetch('/api/evaluaciones', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dto) });
- if (r.status ===201){ alert('Evaluación creada'); modal.hide(); // refrescar
- const matId = dto.MatriculaId; // find curso id? reload matriculas
- const input = document.getElementById('txtBuscar'); if (input.value) { buscar(input.value); }
- return; }
- if (r.status ===409){ const json = await r.json(); document.getElementById('errorEval').textContent = json.message || 'Ya existe evaluación'; return; }
- if (r.status ===400){ const json = await r.json(); document.getElementById('errorEval').textContent = 'Errores: ' + JSON.stringify(json); return; }
- if (r.status ===403){ document.getElementById('errorEval').textContent = 'No autorizado para evaluar este curso'; return; }
- document.getElementById('errorEval').textContent = 'Error al guardar: ' + r.status;
- } catch(e){ document.getElementById('errorEval').textContent = e.message; }
- });
+  async function cargarBloques(){
+   const cursoId = filtroCurso.value;
+   const cuatrimestreId = filtroCuatrimestre.value;
+   let url = '/api/bloques';
+   if(cursoId || cuatrimestreId){
+    url += `?${cursoId ? 'cursoId=' + cursoId : ''}${cuatrimestreId ? '&cuatrimestreId=' + cuatrimestreId : ''}`;
+   }
+   try{
+    const r = await fetch(url, { credentials: 'include' });
+    if(r.ok){
+     const list = await r.json();
+     renderBloques(list);
+    }else{
+     bloquesContainer.innerHTML = '<div class="text-danger">Error al cargar bloques</div>';
+    }
+   }catch(e){ console.error(e); }
+  }
+
+  function renderBloques(list){
+   if(!list.length){
+    bloquesContainer.innerHTML = '<div class="text-muted">No hay bloques de evaluación</div>';
+    return;
+   }
+   bloquesContainer.innerHTML = `
+    <table class="table table-striped">
+     <thead><tr><th>Nombre</th><th>Tipo</th><th>Peso</th><th>Fecha Creación</th><th>Acciones</th></tr></thead>
+     <tbody>
+      ${list.map(b => `
+       <tr>
+        <td>${b.nombre}</td>
+        <td>${b.tipo}</td>
+        <td>${b.peso ? b.peso + '%' : 'N/A'}</td>
+        <td>${new Date(b.fechaCreacion).toLocaleDateString()}</td>
+        <td>
+         <button class="btn btn-sm btn-primary me-1" onclick="evaluarBloque(${b.id}, '${b.nombre}')">Evaluar</button>
+         <button class="btn btn-sm btn-warning me-1" onclick="editarBloque(${b.id})">Editar</button>
+         <button class="btn btn-sm btn-danger" onclick="eliminarBloque(${b.id})">Eliminar</button>
+        </td>
+       </tr>
+      `).join('')}
+     </tbody>
+    </table>
+   `;
+  }
+
+  function abrirModalBloque(bloque = null){
+   document.getElementById('bloqueId').value = bloque ? bloque.id : '';
+   document.getElementById('cursoId').value = bloque ? bloque.cursoId : '';
+   document.getElementById('cuatrimestreId').value = bloque ? bloque.cuatrimestreId : '';
+   document.getElementById('nombre').value = bloque ? bloque.nombre : '';
+   document.getElementById('tipo').value = bloque ? bloque.tipo : 'General';
+   document.getElementById('peso').value = bloque ? bloque.peso : '';
+   document.getElementById('modalTitle').textContent = bloque ? 'Editar Bloque' : 'Crear Bloque';
+   document.getElementById('errorBloque').textContent = '';
+   modalBloque.show();
+  }
+
+  async function guardarBloque(){
+   const dto = {
+    CursoId: parseInt(document.getElementById('cursoId').value),
+    CuatrimestreId: parseInt(document.getElementById('cuatrimestreId').value),
+    Nombre: document.getElementById('nombre').value,
+    Tipo: document.getElementById('tipo').value,
+    Peso: document.getElementById('peso').value ? parseFloat(document.getElementById('peso').value) : null
+   };
+   const id = document.getElementById('bloqueId').value;
+   const method = id ? 'PUT' : 'POST';
+   const url = id ? `/api/bloques/${id}` : '/api/bloques';
+   try{
+    const r = await fetch(url, { method, credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify(dto) });
+    if(r.ok){
+     modalBloque.hide();
+     cargarBloques();
+    }else{
+     const err = await r.json();
+     document.getElementById('errorBloque').textContent = err.message || 'Error';
+    }
+   }catch(e){ document.getElementById('errorBloque').textContent = e.message; }
+  }
+
+  window.evaluarBloque = function(id, nombre){
+   currentBloqueId = id;
+   document.getElementById('bloqueNombre').textContent = nombre;
+   cargarEstudiantes(id);
+   modalEvaluar.show();
+  };
+
+  async function cargarEstudiantes(bloqueId){
+   try{
+    const r = await fetch(`/api/bloques/${bloqueId}/alumnos`, { credentials: 'include' });
+    if(r.ok){
+     const list = await r.json();
+     estudiantesContainer.innerHTML = list.map(e => `
+      <div class="mb-2 border p-2">
+       <strong>${e.nombre}</strong>
+       <input type="hidden" name="matriculaIds[]" value="${e.id}" />
+       <div class="row mt-2">
+        <div class="col-md-3">
+         <input type="number" step="0.01" min="0" max="100" name="notas[]" class="form-control" placeholder="Nota" required />
+        </div>
+        <div class="col-md-3">
+         <select name="estados[]" class="form-select" required>
+          <option value="Aprobado">Aprobado</option>
+          <option value="Reprobado">Reprobado</option>
+         </select>
+        </div>
+        <div class="col-md-6">
+         <input type="text" name="observaciones[]" class="form-control" placeholder="Observaciones" />
+        </div>
+       </div>
+      </div>
+     `).join('');
+    }else{
+     estudiantesContainer.innerHTML = '<div class="text-danger">Error al cargar estudiantes</div>';
+    }
+   }catch(e){ console.error(e); }
+  }
+
+  async function guardarCalificaciones(){
+   const matriculaIds = Array.from(document.querySelectorAll('input[name="matriculaIds[]"]')).map(i => parseInt(i.value));
+   const notas = Array.from(document.querySelectorAll('input[name="notas[]"]')).map(i => parseFloat(i.value));
+   const estados = Array.from(document.querySelectorAll('select[name="estados[]"]')).map(s => s.value);
+   const observaciones = Array.from(document.querySelectorAll('input[name="observaciones[]"]')).map(i => i.value);
+
+   const items = matriculaIds.map((id, idx) => ({
+    MatriculaId: id,
+    Nota: notas[idx],
+    Estado: estados[idx],
+    Observaciones: observaciones[idx]
+   })).filter(i => !isNaN(i.Nota));
+
+   if(!items.length) return alert('Ingrese al menos una calificación');
+
+   try{
+    const r = await fetch(`/api/bloques/${currentBloqueId}/calificaciones`, { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ Items: items }) });
+    if(r.ok){
+     modalEvaluar.hide();
+     alert('Calificaciones guardadas');
+    }else{
+     const err = await r.json();
+     document.getElementById('errorEval').textContent = err.message || 'Error';
+    }
+   }catch(e){ document.getElementById('errorEval').textContent = e.message; }
+  }
+
+  window.editarBloque = function(id){ alert('Editar no implementado aún - usa la tabla para referencia'); };
+
+  window.eliminarBloque = async function(id){
+   if(!confirm('¿Eliminar este bloque?')) return;
+   try{
+    const r = await fetch(`/api/bloques/${id}`, { method: 'DELETE', credentials: 'include' });
+    if(r.ok){
+     cargarBloques();
+    }else{
+     alert('Error al eliminar');
+    }
+   }catch(e){ console.error(e); }
+  };
 
  })();
  </script>

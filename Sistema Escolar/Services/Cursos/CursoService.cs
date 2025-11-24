@@ -218,7 +218,7 @@ namespace SistemaEscolar.Services.Cursos
  return await _ctx.CursoDocentes
  .Where(cd => cd.CursoId == cursoId)
  .Include(cd => cd.Docente)
- .Select(cd => new DocenteAsignadoDTO { DocenteId = cd.DocenteId, NombreCompleto = cd.Docente.Nombre + " " + cd.Docente.Apellidos, Activo = cd.Activo })
+ .Select(cd => new DocenteAsignadoDTO { DocenteId = cd.DocenteId, NombreCompleto = cd.Docente != null ? cd.Docente.Nombre + " " + cd.Docente.Apellidos : "Docente desconocido", Activo = cd.Activo })
  .ToListAsync();
  }
 

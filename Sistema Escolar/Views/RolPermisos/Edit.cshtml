@@ -4,7 +4,8 @@
  var asignados = ViewBag.Asignados as List<int> ?? new();
  Layout = "/Views/Shared/_Layout.cshtml";
 }
-<h3>Editar permisos para rol: @rol?.Nombre</h3>
+@if(rol != null) {
+<h3>Editar permisos para rol: @rol.Nombre</h3>
 <form method="post" action="/Seguridad/RolPermisos/@rol.Id">
  @Html.AntiForgeryToken()
  <div class="mb-3">
@@ -12,3 +13,6 @@
  </div>
  <button class="btn btn-primary" type="submit">Guardar</button>
 </form>
+} else {
+<p>Rol no encontrado.</p>
+}

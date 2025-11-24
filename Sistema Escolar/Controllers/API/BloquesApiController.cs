@@ -29,7 +29,16 @@ namespace SistemaEscolar.Controllers.API
  var asign = await _ctx.CursoDocentes.AnyAsync(cd => cd.CursoId == dto.CursoId && cd.DocenteId == uid && cd.Activo);
  if(!asign) return Forbid();
  }
- var b = new Models.Academico.BloqueEvaluacion{ CursoId = dto.CursoId, CuatrimestreId = dto.CuatrimestreId, Nombre = dto.Nombre, Tipo = dto.Tipo, Peso = dto.Peso, FechaCreacion = DateTime.UtcNow, CreadoPorId = uid };
+ var b = new Models.Academico.BloqueEvaluacion
+ {
+ CursoId = dto.CursoId,
+ CuatrimestreId = dto.CuatrimestreId,
+ Nombre = dto.Nombre,
+ Tipo = dto.Tipo,
+ Peso = dto.Peso,
+ FechaCreacion = DateTime.UtcNow,
+ CreadoPorId = uid
+ };
  _ctx.BloqueEvaluaciones.Add(b);
  await _ctx.SaveChangesAsync();
  return Ok(new { message = "Bloque creado", id = b.Id });
@@ -38,7 +47,11 @@ namespace SistemaEscolar.Controllers.API
  [HttpGet]
  public async Task<IActionResult> List([FromQuery] int cursoId, [FromQuery] int cuatrimestreId)
  {
- var list = await _ctx.BloqueEvaluaciones.Where(b => b.CursoId == cursoId && b.CuatrimestreId == cuatrimestreId).OrderByDescending(b=>b.FechaCreacion).Select(b => new { b.Id, b.Nombre, b.Tipo, b.Peso, b.FechaCreacion }).ToListAsync();
+ var list = await _ctx.BloqueEvaluaciones
+  .Where(b => b.CursoId == cursoId && b.CuatrimestreId == cuatrimestreId)
+  .OrderByDescending(b => b.FechaCreacion)
+  .Select(b => new { b.Id, b.Nombre, b.Tipo, b.Peso, b.FechaCreacion })
+  .ToListAsync();
  return Ok(list);
  }
 
@@ -47,7 +60,11 @@ namespace SistemaEscolar.Controllers.API
  {
  var bloque = await _ctx.BloqueEvaluaciones.FindAsync(id);
  if(bloque==null) return NotFound(new{ message = "Bloque no encontrado" });
- var mats = await _ctx.Matriculas.Where(m => m.CursoId==bloque.CursoId && m.CuatrimestreId==bloque.CuatrimestreId && m.Activo).Include(m=>m.Estudiante).Select(m => new { m.Id, Nombre = (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim() }).ToListAsync();
+ var mats = await _ctx.Matriculas
+  .Where(m => m.CursoId == bloque.CursoId && m.CuatrimestreId == bloque.CuatrimestreId && m.Activo)
+  .Include(m => m.Estudiante)
+  .Select(m => new { m.Id, Nombre = (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim() })
+  .ToListAsync();
  return Ok(mats);
  }
 
@@ -55,6 +72,7 @@ namespace SistemaEscolar.Controllers.API
  public async Task<IActionResult> Calificar(int id, [FromBody] CalificacionCreateDTO dto)
  {
  if(!ModelState.IsValid) return BadRequest(ModelState);
+ if(dto.Items == null || !dto.Items.Any()) return BadRequest(new { message = "Debe proporcionar al menos un item para calificar" });
  var bloque = await _ctx.BloqueEvaluaciones.FindAsync(id);
  if(bloque==null) return NotFound(new{ message = "Bloque no encontrado" });
  var uidStr = User.FindFirstValue(ClaimTypes.NameIdentifier); int uid =0; if(!string.IsNullOrEmpty(uidStr)) uid = int.Parse(uidStr);
@@ -66,7 +84,16 @@ namespace SistemaEscolar.Controllers.API
  var exists = await _ctx.CalificacionBloques.Where(cb => cb.BloqueEvaluacionId==id && matriculaIds.Contains(cb.MatriculaId)).Select(cb=>cb.MatriculaId).ToListAsync();
  if(exists.Any()) return Conflict(new{ message = "Ya existen calificaciones para algunos estudiantes en este bloque", conflicts = exists });
  var now = DateTime.UtcNow;
- var list = dto.Items.Select(i => new Models.Academico.CalificacionBloque{ BloqueEvaluacionId = id, MatriculaId = i.MatriculaId, Nota = i.Nota, Observaciones = i.Observaciones, Estado = i.Estado, FechaRegistro = now, UsuarioRegistro = uid }).ToList();
+ var list = dto.Items.Select(i => new Models.Academico.CalificacionBloque
+ {
+ BloqueEvaluacionId = id,
+ MatriculaId = i.MatriculaId,
+ Nota = i.Nota,
+ Observaciones = i.Observaciones,
+ Estado = i.Estado,
+ FechaRegistro = now,
+ UsuarioRegistro = uid
+ }).ToList();
  _ctx.CalificacionBloques.AddRange(list);
  await _ctx.SaveChangesAsync();
  return Ok(new{ message = "Calificaciones registradas", created = list.Count });

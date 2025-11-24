@@ -65,8 +65,8 @@ namespace SistemaEscolar.Controllers.API
  .Select(m => new {
  MatriculaId = m.Id,
  EstudianteId = m.EstudianteId,
- NombreCompleto = (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim(),
- Identificacion = m.Estudiante.Identificacion,
+ NombreCompleto = m.Estudiante != null ? (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim() : "Estudiante desconocido",
+ Identificacion = m.Estudiante != null ? m.Estudiante.Identificacion : string.Empty,
  Cuatrimestre = m.Cuatrimestre != null ? m.Cuatrimestre.Nombre : string.Empty,
  FechaMatricula = m.FechaMatricula
  })
@@ -95,11 +95,11 @@ namespace SistemaEscolar.Controllers.API
  var lista = await query.Select(m => new {
  MatriculaId = m.Id,
  CursoId = m.CursoId,
- CursoCodigo = m.Curso.Codigo,
- CursoNombre = m.Curso.Nombre,
+ CursoCodigo = m.Curso != null ? m.Curso.Codigo : "N/A",
+ CursoNombre = m.Curso != null ? m.Curso.Nombre : "N/A",
  CuatrimestreId = m.CuatrimestreId,
  Cuatrimestre = m.Cuatrimestre != null ? m.Cuatrimestre.Nombre : string.Empty,
- NombreCompleto = (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim()
+ NombreCompleto = m.Estudiante != null ? (m.Estudiante.Nombre + " " + m.Estudiante.Apellidos).Trim() : "Estudiante desconocido"
  }).ToListAsync();
 
  return Ok(lista);

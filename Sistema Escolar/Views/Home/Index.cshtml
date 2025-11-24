@@ -27,13 +27,13 @@
  <div class="col-sm-6 col-md-3">
  <a class="btn btn-outline-secondary w-100" href="/Historial">Historial Académico</a>
  </div>
- @if (User.HasClaim("permiso","Usuarios.Gestion"))
+ @if (User?.HasClaim("permiso","Usuarios.Gestion") ?? false)
  {
  <div class="col-sm-6 col-md-3">
  <a class="btn btn-outline-success w-100" href="/Usuarios">Usuarios</a>
  </div>
  }
- @if (User.HasClaim("permiso","Bitacora.Ver"))
+ @if (User?.HasClaim("permiso","Bitacora.Ver") ?? false)
  {
  <div class="col-sm-6 col-md-3">
  <a class="btn btn-outline-dark w-100" href="/Bitacora">Bitácora</a>

@@ -3,6 +3,7 @@ using System.Linq;
 using SistemaEscolar.Data;
 using SistemaEscolar.Models;
 using SistemaEscolar.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 namespace SistemaEscolar.Data
 {
@@ -103,6 +104,68 @@ namespace SistemaEscolar.Data
             var eval = new Models.Academico.Evaluacion { MatriculaId = matricula.Id, Nota =85.5m, Estado = "Aprobado", Participacion = "Buena", Observaciones = "Evaluación inicial", FechaRegistro = DateTime.UtcNow, UsuarioRegistro = docente.Id };
             ctx.Evaluaciones.Add(eval);
             ctx.SaveChanges();
+        }
+
+        public static void SeedDefaultUsers(ApplicationDbContext context)
+        {
+            // Seed users if not exist
+            if (!context.Usuarios.Any())
+            {
+                // Admin user
+                PasswordHasher.CreatePasswordHash("Admin123!", out var adminHash, out var adminSalt);
+                var admin = new Usuario
+                {
+                    Nombre = "Admin",
+                    Apellidos = "Sistema",
+                    Email = "admin@sistema.edu",
+                    Identificacion = "ADM001",
+                    PasswordHash = adminHash,
+                    PasswordSalt = adminSalt,
+                    IsActive = true
+                };
+                context.Usuarios.Add(admin);
+
+                // Docente user
+                PasswordHasher.CreatePasswordHash("Docente123!", out var docenteHash, out var docenteSalt);
+                var docente = new Usuario
+                {
+                    Nombre = "Juan",
+                    Apellidos = "Pérez",
+                    Email = "docente@sistema.edu",
+                    Identificacion = "DOC001",
+                    PasswordHash = docenteHash,
+                    PasswordSalt = docenteSalt,
+                    IsActive = true
+                };
+                context.Usuarios.Add(docente);
+
+                // Estudiante user
+                PasswordHasher.CreatePasswordHash("Estudiante123!", out var estudianteHash, out var estudianteSalt);
+                var estudiante = new Usuario
+                {
+                    Nombre = "María",
+                    Apellidos = "García",
+                    Email = "estudiante@sistema.edu",
+                    Identificacion = "EST001",
+                    PasswordHash = estudianteHash,
+                    PasswordSalt = estudianteSalt,
+                    IsActive = true
+                };
+                context.Usuarios.Add(estudiante);
+
+                context.SaveChanges();
+
+                // Assign roles
+                var adminRole = context.Roles.First(r => r.Nombre == "Administrador");
+                var docenteRole = context.Roles.First(r => r.Nombre == "Docente");
+                var estudianteRole = context.Roles.First(r => r.Nombre == "Estudiante");
+
+                context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = admin.Id, RolId = adminRole.Id });
+                context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = docente.Id, RolId = docenteRole.Id });
+                context.UsuarioRoles.Add(new UsuarioRol { UsuarioId = estudiante.Id, RolId = estudianteRole.Id });
+
+                context.SaveChanges();
+            }
         }
     }
 }

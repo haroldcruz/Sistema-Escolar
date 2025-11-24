@@ -15,17 +15,18 @@ namespace SistemaEscolar.Pages.Instrumentos
         public RegistrarAsistenciaModel(ApplicationDbContext context) => _context = context;
 
         [BindProperty]
-        public List<Asistencia> Asistencias { get; set; }
-        public InstrumentoEvaluacion Instrumento { get; set; }
+        public List<Asistencia>? Asistencias { get; set; }
+        public InstrumentoEvaluacion? Instrumento { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int id)
         {
             Instrumento = await _context.InstrumentosEvaluacion.FindAsync(id);
             if (Instrumento == null) return NotFound();
-            if (Instrumento.IsLocked) return Forbid();
+            if (Instrumento!.IsLocked) return Forbid();
 
             // For demo: load matriculas (students) from Matricula table if exists
-            Asistencias = await _context.Matriculas.Select(m => new Asistencia { MatriculaId = m.Id, Presente = false }).ToListAsync();
+            var matriculas = await _context.Matriculas.ToListAsync();
+            Asistencias = matriculas.Select(m => new Asistencia { MatriculaId = m.Id, Presente = false, Observacion = "", InstrumentoEvaluacionId = id, InstrumentoEvaluacion = Instrumento }).ToList();
             return Page();
         }
 
@@ -33,8 +34,9 @@ namespace SistemaEscolar.Pages.Instrumentos
         {
             Instrumento = await _context.InstrumentosEvaluacion.FindAsync(id);
             if (Instrumento == null) return NotFound();
-            if (Instrumento.IsLocked) return Forbid();
+            if (Instrumento!.IsLocked) return Forbid();
 
+            if (Asistencias == null) return BadRequest();
             foreach (var a in Asistencias)
             {
                 a.InstrumentoEvaluacionId = id;

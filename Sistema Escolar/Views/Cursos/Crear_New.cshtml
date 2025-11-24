@@ -22,7 +22,7 @@
  <label class="form-label">Cuatrimestre</label>
  <select name="CuatrimestreId" class="form-control">
  <option value="">-- Seleccione --</option>
- @foreach(var c in cuatrimestres){ <option value="@c.Id">@c.Nombre</option> }
+ @if(cuatrimestres != null) { @foreach(var c in cuatrimestres){ <option value="@c.Id">@c.Nombre</option> } }
  </select>
  </div>
  <button class="btn btn-primary">Guardar</button>

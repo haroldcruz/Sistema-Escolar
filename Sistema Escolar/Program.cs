@@ -126,10 +126,14 @@ using (var scope = app.Services.CreateScope())
  var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
  try
  {
- // Ensure DB created but do not delete existing data
+ // In development, drop and recreate database to regenerate
+ if (isDev)
+ {
+ ctx.Database.EnsureDeleted();
+ }
  ctx.Database.EnsureCreated();
  DbPatcher.Apply(ctx); // aplica cambios no destructivos
- // No DataSeeder.Seed to avoid reseeding on each start
+ DataSeeder.Seed(ctx); // seed users if not exist
  }
  catch (Exception ex)
  {

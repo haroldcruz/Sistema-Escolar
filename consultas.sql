@@ -1,1 +1,1 @@
-﻿SELECT Id, Email, PasswordHash, PasswordSalt FROM dbo.Usuarios WHERE Email = 'admin@local.test';
+﻿select * from Usuarios

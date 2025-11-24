@@ -28,8 +28,8 @@ namespace SistemaEscolar.Services.Historial
 
  var registros = evaluaciones.Select(e => new HistorialItemDTO
  {
- Curso = e.Matricula?.Curso?.Nombre ?? string.Empty,
- Cuatrimestre = e.Matricula?.Cuatrimestre?.Nombre ?? string.Empty,
+ Curso = e.Matricula!.Curso?.Nombre ?? string.Empty,
+ Cuatrimestre = e.Matricula!.Cuatrimestre?.Nombre ?? string.Empty,
  Nota = e.Nota,
  Estado = e.Estado,
  Participacion = e.Participacion,
@@ -99,8 +99,8 @@ namespace SistemaEscolar.Services.Historial
  Cuatrimestre = g.Key,
  Cursos = g.Select(e => new HistorialItemDTO
  {
- Curso = e.Matricula?.Curso?.Nombre ?? string.Empty,
- Cuatrimestre = e.Matricula?.Cuatrimestre?.Nombre ?? string.Empty,
+ Curso = e.Matricula!.Curso?.Nombre ?? string.Empty,
+ Cuatrimestre = e.Matricula!.Cuatrimestre?.Nombre ?? string.Empty,
  Nota = e.Nota,
  Estado = e.Estado,
  Participacion = e.Participacion,

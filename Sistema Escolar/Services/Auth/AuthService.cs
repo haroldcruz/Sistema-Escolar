@@ -28,6 +28,11 @@ namespace SistemaEscolar.Services.Auth
                 return null;
             }
             // verificar password
+            if (user.PasswordHash == null || user.PasswordSalt == null)
+            {
+                _logger.LogWarning("Auth: user {Email} has null password hash or salt", email);
+                return null;
+            }
             try
             {
                 _logger.LogInformation("Auth: user found Id={Id} Email={Email} PasswordHashLen={HashLen} PasswordSaltLen={SaltLen}", user.Id, user.Email, user.PasswordHash?.Length ??0, user.PasswordSalt?.Length ??0);

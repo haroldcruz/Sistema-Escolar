@@ -51,7 +51,7 @@ namespace SistemaEscolar.Services.Bitacora
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
             var query = _context.BitacoraEntries.Include(b => b.Usuario).AsQueryable();
-            if (!string.IsNullOrWhiteSpace(usuario)) query = query.Where(b => (b.Usuario.Nombre + " " + b.Usuario.Apellidos).Contains(usuario));
+            if (!string.IsNullOrWhiteSpace(usuario)) query = query.Where(b => b.Usuario != null && (b.Usuario.Nombre + " " + b.Usuario.Apellidos).Contains(usuario));
             if (!string.IsNullOrWhiteSpace(modulo)) query = query.Where(b => b.Modulo.Contains(modulo));
             if (!string.IsNullOrWhiteSpace(accion)) query = query.Where(b => b.Accion.Contains(accion));
             var entities = await query.OrderByDescending(b => b.Fecha)
@@ -73,7 +73,7 @@ namespace SistemaEscolar.Services.Bitacora
         private static BitacoraDTO MapDto(BitacoraEntry b) => new BitacoraDTO
         {
             Id = b.Id,
-            Usuario = b.Usuario.Nombre + " " + b.Usuario.Apellidos,
+            Usuario = b.Usuario != null ? b.Usuario.Nombre + " " + b.Usuario.Apellidos : "Usuario desconocido",
             Accion = b.Accion,
             Modulo = b.Modulo,
             Ip = b.Ip,
