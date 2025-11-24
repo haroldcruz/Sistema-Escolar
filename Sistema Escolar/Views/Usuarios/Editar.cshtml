@@ -1,5 +1,15 @@
 @model SistemaEscolar.DTOs.Usuarios.UsuarioUpdateDTO
-@{ ViewBag.Title = "Editar Usuario"; Layout = "/Views/Shared/_Layout.cshtml"; var roles = ViewBag.Roles as IEnumerable<SistemaEscolar.Models.Rol>; }
+
+@{
+ ViewBag.Title = "Editar Usuario";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var roles = ViewBag.Roles as IEnumerable<SistemaEscolar.Models.Rol>;
+ var cancelUrl = Url.Action("Index", "Home");
+ if (User?.IsInRole("Administrador") == true) cancelUrl = Url.Action("Index", "Usuarios");
+ else if (User?.IsInRole("Estudiante") == true) cancelUrl = Url.Action("Index", "MiHistorial");
+ else if (User?.IsInRole("Docente") == true) cancelUrl = Url.Action("Index", "Evaluaciones");
+}
+
 <h2>Editar Usuario</h2>
 <form method="post">
  <div class="row g-3">
@@ -45,7 +55,7 @@
  </div>
  <div class="col-12">
  <button class="btn btn-primary">Guardar Cambios</button>
- <a href="/Usuarios" class="btn btn-secondary">Cancelar</a>
+ <a href="@cancelUrl" class="btn btn-secondary">Cancelar</a>
  </div>
  </div>
 </form>

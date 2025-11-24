@@ -9,9 +9,7 @@
 </head>
 @{
  var roles = string.Join(',', User?.Claims.Where(c=>c.Type==System.Security.Claims.ClaimTypes.Role).Select(c=>c.Value) ?? new string[0]);
- // Use null-conditional on User to avoid possible NullReferenceException when User is null
  var userId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
- // Toast message from TempData or ViewBag
  var toastMsg = (TempData["ToastMessage"] as string) ?? (ViewBag.ToastMessage as string) ?? string.Empty;
  var toastType = (TempData["ToastType"] as string) ?? (ViewBag.ToastType as string) ?? "info";
 }
@@ -26,8 +24,8 @@
  <ul class="navbar-nav me-auto mb-2 mb-lg-0">
  @if (User?.Identity?.IsAuthenticated ?? false)
  {
- // Show Cursos if user has permiso or is Administrator
- if (User.HasClaim("permiso","Cursos.Ver") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" asp-controller="Cursos" asp-action="Index">Cursos</a></li> }
+ // Show Cursos for non-docente users if they have permiso or are Administrator
+ if ((User.HasClaim("permiso","Cursos.Ver") || User.IsInRole("Administrador")) && !User.IsInRole("Docente")) { <li class="nav-item"><a class="nav-link" asp-controller="Cursos" asp-action="Index">Cursos</a></li> }
  // Módulo separado para asignar docentes (no reutiliza listado de cursos)
  if (User.HasClaim("permiso","Cursos.AsignarDocente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Docentes">Asignar Docentes</a></li> }
  // Usuarios: permitir ver si tiene permiso o es Administrador
@@ -36,21 +34,26 @@
  if (User.HasClaim("permiso","Seguridad.Gestion") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
  // Bitácora: mostrar si tiene permiso o es Administrador
  if (User.HasClaim("permiso","Bitacora.Ver") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }
- // Enlace al módulo Evaluaciones visible sólo si el usuario tiene el permiso Evaluaciones.Crear or is Admin
+ // Enlace al módulo Evaluaciones: visible a usuarios con permiso o administradores
  if (User.HasClaim("permiso","Evaluaciones.Crear") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li> }
- // Links relevantes para Docente
+ // Links específicos para Docente: restringidos a lo que pidió (Evaluaciones, Historial estudiantes, Editar perfil)
  if (User.IsInRole("Docente")) {
- <li class="nav-item"><a class="nav-link" href="/Cursos">Mis Cursos</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li>
  <li class="nav-item"><a class="nav-link" href="/Historial">Historial</a></li>
- <li class="nav-item"><a class="nav-link" href="/Historial/BuscarEvaluacion">Buscar y Evaluar</a></li>
+ // Enlace a editar perfil del docente (usar userId para dirigir al recurso correcto)
+ <li class="nav-item"><a class="nav-link" href="/Usuarios/Editar/@userId">Mi Perfil</a></li>
  }
- if (User.IsInRole("Estudiante")) { <li class="nav-item"><a class="nav-link" href="/MiHistorial">Mi Historial</a></li> }
- // Nuevo: enlace a matriculación (solo para admin o permiso Cursos.Crear)
+ // Si es Estudiante mostrar Mi Historial y opción para editar su perfil sólo
+ if (User.IsInRole("Estudiante")) {
+ <li class="nav-item"><a class="nav-link" href="/MiHistorial">Mi Historial</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Usuarios/Editar/@userId">Mi Perfil</a></li>
+ }
+ // Matriculación: solo admin o permiso Cursos.Crear
  if (User.HasClaim("permiso","Cursos.Crear") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Matriculas/Crear">Matricular</a></li> }
- // Estadísticas: disponible para Docente y Admin
- if (User.IsInRole("Docente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Estadisticas">Estadísticas</a></li> }
- // Bloques de evaluación
- if (User.IsInRole("Docente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bloques">Bloques</a></li> }
+ // Estadísticas: disponible solo para Administrador
+ if (User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Estadisticas">Estadísticas</a></li> }
+ // Bloques de evaluación: disponible solo para Administrador
+ if (User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bloques">Bloques</a></li> }
  }
  }
  </ul>

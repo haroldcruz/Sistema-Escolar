@@ -1,199 +1,78 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SistemaEscolar.Interfaces.Usuarios;
-using SistemaEscolar.DTOs.Usuarios;
-using System.Threading.Tasks;
-using System.Security.Claims;
 using SistemaEscolar.Data;
-using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using System.Threading.Tasks;
+using SistemaEscolar.Helpers;
 using System.Linq;
+using SistemaEscolar.DTOs.Usuarios;
 
 namespace SistemaEscolar.Controllers
 {
- // Vista de usuarios protegida por permiso granular
- [Authorize(Policy = "Usuarios.Gestion")]
+ [Authorize]
+ [Route("Usuarios")]
  public class UsuariosController : Controller
  {
- private readonly IUsuarioService _usuarios;
  private readonly ApplicationDbContext _ctx;
-
- public UsuariosController(IUsuarioService usuarios, ApplicationDbContext ctx)
- {
- _usuarios = usuarios;
- _ctx = ctx;
- }
+ public UsuariosController(ApplicationDbContext ctx) { _ctx = ctx; }
 
  private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
- private string Ip() => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+ private bool IsAdmin() => User.IsInRole("Administrador");
 
- public async Task<IActionResult> Index()
+ // GET: /Usuarios/Editar/{id}
+ [HttpGet("Editar/{id}")]
+ public IActionResult Editar(int id)
  {
- var lista = await _usuarios.GetAllAsync();
- return View(lista);
- }
+ var uid = CurrentUserId();
+ if (uid ==0) return Unauthorized();
+ // Si no es admin, sólo puede editar su propio perfil
+ if (!IsAdmin() && id != uid) return RedirectToAction("AccessDenied", "Auth");
 
- public IActionResult Crear()
- {
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(new UsuarioCreateDTO());
- }
+ var usuario = _ctx.Usuarios.Find(id);
+ if (usuario == null) return NotFound();
 
- [HttpPost]
- [ValidateAntiForgeryToken]
- public async Task<IActionResult> Crear(UsuarioCreateDTO dto)
+ var model = new UsuarioUpdateDTO
  {
- if (!ModelState.IsValid)
- {
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
- }
-
- try
- {
- var (ok, error) = await _usuarios.CreateAsync(dto);
- if (!ok)
- {
- TempData["ToastMessage"] = error ?? "No se pudo crear el usuario. Revise los datos e intente de nuevo.";
- TempData["ToastType"] = "danger";
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
- }
-
- TempData["ToastMessage"] = "Usuario creado correctamente.";
- TempData["ToastType"] = "success";
- return RedirectToAction("Index");
- }
- catch (System.Exception ex)
- {
- try
- {
- await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
- {
- UsuarioId = CurrentUserId(),
- Accion = "Error crear usuario: " + ex.Message,
- Modulo = "Seguridad",
- Ip = Ip()
- });
- await _ctx.SaveChangesAsync();
- }
- catch { }
-
- TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
- TempData["ToastType"] = "danger";
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
- }
- }
-
- public async Task<IActionResult> Editar(int id)
- {
- var u = await _usuarios.GetByIdAsync(id);
- if (u == null) return NotFound();
-
- var nombres = u.NombreCompleto.Split(' ');
- var nombre = nombres.First();
- var apellidos = string.Join(' ', nombres.Skip(1));
-
- var dto = new UsuarioUpdateDTO
- {
- Id = u.Id,
- Nombre = nombre,
- Apellidos = apellidos,
- Email = u.Email,
- Identificacion = u.Identificacion,
- RolesIds = await _ctx.UsuarioRoles.Where(ur => ur.UsuarioId == id).Select(ur => ur.RolId).ToListAsync()
+ Id = usuario.Id,
+ Nombre = usuario.Nombre,
+ Apellidos = usuario.Apellidos,
+ Email = usuario.Email,
+ Identificacion = usuario.Identificacion
  };
-
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
+ return View(model);
  }
 
- [HttpPost]
+ // POST: /Usuarios/Editar/{id}
+ [HttpPost("Editar/{id}")]
  [ValidateAntiForgeryToken]
- public async Task<IActionResult> Editar(int id, UsuarioUpdateDTO dto)
+ public async Task<IActionResult> EditarPost(int id, UsuarioUpdateDTO model)
  {
- if (id != dto.Id) return BadRequest();
+ var uid = CurrentUserId();
+ if (uid ==0) return Unauthorized();
+ if (!IsAdmin() && id != uid) return RedirectToAction("AccessDenied", "Auth");
+ if (id != model.Id) return BadRequest();
+ if (!ModelState.IsValid) return View("Editar", model);
 
- if (!ModelState.IsValid)
+ var usuario = _ctx.Usuarios.FirstOrDefault(u => u.Id == id);
+ if (usuario == null) return NotFound();
+
+ usuario.Nombre = model.Nombre;
+ usuario.Apellidos = model.Apellidos;
+ usuario.Email = model.Email;
+ usuario.Identificacion = model.Identificacion;
+
+ // Si se proporcionó contraseña, actualizar hash y salt
+ if (!string.IsNullOrWhiteSpace(model.Password))
  {
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
+ PasswordHasher.CreatePasswordHash(model.Password, out byte[] hash, out byte[] salt);
+ usuario.PasswordHash = hash;
+ usuario.PasswordSalt = salt;
  }
 
- try
- {
- var (ok, error) = await _usuarios.UpdateAsync(id, dto);
- if (!ok)
- {
- TempData["ToastMessage"] = error ?? "No se pudo actualizar el usuario. Revise los datos e intente de nuevo.";
- TempData["ToastType"] = "danger";
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
- }
-
- TempData["ToastMessage"] = "Usuario actualizado correctamente.";
- TempData["ToastType"] = "success";
- return RedirectToAction("Index");
- }
- catch (System.Exception ex)
- {
- try
- {
- await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
- {
- UsuarioId = CurrentUserId(),
- Accion = "Error actualizar usuario: " + ex.Message,
- Modulo = "Seguridad",
- Ip = Ip()
- });
  await _ctx.SaveChangesAsync();
- }
- catch { }
-
- TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
- TempData["ToastType"] = "danger";
- ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
- return View(dto);
- }
- }
-
- [HttpPost]
- [ValidateAntiForgeryToken]
- public async Task<IActionResult> Eliminar(int id)
- {
- try
- {
- var (ok, error) = await _usuarios.DeleteAsync(id);
- if (!ok)
- {
- TempData["ToastMessage"] = error ?? "No se pudo eliminar el usuario.";
- TempData["ToastType"] = "warning";
- return RedirectToAction("Index");
- }
-
- TempData["ToastMessage"] = "Usuario eliminado (desactivado) correctamente.";
+ TempData["ToastMessage"] = "Perfil actualizado";
  TempData["ToastType"] = "success";
- return RedirectToAction("Index");
- }
- catch (System.Exception ex)
- {
- try
- {
- await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
- {
- UsuarioId = CurrentUserId(),
- Accion = "Error eliminar usuario: " + ex.Message,
- Modulo = "Seguridad",
- Ip = Ip()
- });
- await _ctx.SaveChangesAsync();
- }
- catch { }
-
- TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
- TempData["ToastType"] = "danger";
- return RedirectToAction("Index");
- }
+ return RedirectToAction("Editar", new { id = usuario.Id });
  }
  }
 }

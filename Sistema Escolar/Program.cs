@@ -19,6 +19,7 @@ using System.Text;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Authentication; // for PolicyScheme
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -68,9 +69,18 @@ var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
 // Cookie para vistas + JWT para APIs
 builder.Services.AddAuthentication(options =>
 {
- options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
- options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
- options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+ // Use a policy scheme that selects JWT for API requests and Cookie for standard web requests
+ options.DefaultScheme = "SmartScheme";
+})
+.AddPolicyScheme("SmartScheme", "JWT or Cookie", options =>
+{
+ options.ForwardDefaultSelector = context =>
+ {
+ var path = context.Request.Path;
+ if (path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+ return JwtBearerDefaults.AuthenticationScheme;
+ return CookieAuthenticationDefaults.AuthenticationScheme;
+ };
 })
 .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, opt =>
 {
@@ -120,17 +130,13 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// On startup: do not reset database. Only ensure it exists and apply DB patcher if available.
+// On startup: apply migrations and seed, do NOT delete database automatically
 using (var scope = app.Services.CreateScope())
 {
  var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
  try
  {
- // In development, drop and recreate database to regenerate
- if (isDev)
- {
- ctx.Database.EnsureDeleted();
- }
+ // Apply migrations (creates DB if missing) and run patcher/seeders
  ctx.Database.Migrate();
  DbPatcher.Apply(ctx); // aplica cambios no destructivos
  DataSeeder.Seed(ctx); // seed users if not exist

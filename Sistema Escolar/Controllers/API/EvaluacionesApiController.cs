@@ -13,7 +13,7 @@ namespace SistemaEscolar.Controllers.API
 {
  [ApiController]
  [Route("api/evaluaciones")]
- [Authorize]
+ [Authorize] // policies checked per-action
  public class EvaluacionesApiController : ControllerBase
  {
  private readonly ApplicationDbContext _ctx;
@@ -24,6 +24,7 @@ namespace SistemaEscolar.Controllers.API
 
  // GET: api/evaluaciones/mis-cursos
  [HttpGet("mis-cursos")]
+ [Authorize(Roles = "Docente,Administrador")] // Docente y Admin can list courses, but admin will not see evaluations
  public async Task<IActionResult> GetMisCursos()
  {
  var uid = CurrentUserId();
@@ -48,6 +49,7 @@ namespace SistemaEscolar.Controllers.API
 
  // GET: api/evaluaciones/cursos/5/estudiantes
  [HttpGet("cursos/{cursoId:int}/estudiantes")]
+ [Authorize(Roles = "Docente,Administrador")]
  public async Task<IActionResult> GetEstudiantesPorCurso(int cursoId)
  {
  var uid = CurrentUserId();
@@ -77,6 +79,7 @@ namespace SistemaEscolar.Controllers.API
 
  // GET: api/evaluaciones/estudiante/{estudianteId}/matriculas
  [HttpGet("estudiante/{estudianteId:int}/matriculas")]
+ [Authorize]
  public async Task<IActionResult> GetMatriculasDelEstudianteEnMisCursos(int estudianteId)
  {
  var uid = CurrentUserId();
@@ -107,7 +110,7 @@ namespace SistemaEscolar.Controllers.API
 
  // POST: api/evaluaciones
  [HttpPost]
- [Authorize(Policy = "Evaluaciones.Crear")]
+ [Authorize(Roles = "Docente")] // Solo docentes pueden crear evaluaciones
  public async Task<IActionResult> Crear([FromBody] EvaluacionCreateDTO dto)
  {
  if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -122,8 +125,7 @@ namespace SistemaEscolar.Controllers.API
  // verificar que el docente actual esté asignado al curso correspondiente
  var cursoId = matricula.CursoId;
  var esDocenteAsignado = await _ctx.CursoDocentes.AnyAsync(cd => cd.CursoId == cursoId && cd.DocenteId == uid && cd.Activo);
- var esAdmin = User.IsInRole("Administrador");
- if (!esDocenteAsignado && !esAdmin) return Forbid();
+ if (!esDocenteAsignado) return Forbid();
 
  // Evitar duplicados: ya existe evaluación para la misma matrícula?
  var existe = await _ctx.Evaluaciones.AnyAsync(e => e.MatriculaId == dto.MatriculaId);
@@ -152,24 +154,6 @@ namespace SistemaEscolar.Controllers.API
  catch { /* no bloquear por error de bitácora */ }
 
  return CreatedAtAction(nameof(GetEstudiantesPorCurso), new { cursoId = cursoId }, new { message = "Evaluación creada", evaluacionId = evaluacion.Id });
- }
-
- [HttpPost]
- public async Task<IActionResult> Create([FromBody] EvaluacionCreateDTO dto)
- {
- if(!ModelState.IsValid) return BadRequest(ModelState);
- // validar existencia de matricula
- var matricula = await _ctx.Matriculas.Include(m=>m.Curso).Include(m=>m.Cuatrimestre).FirstOrDefaultAsync(m=>m.Id==dto.MatriculaId);
- if(matricula==null) return NotFound(new{ message = "Matrícula no encontrada" });
- // evitar duplicados por mismo matricula y fecha por el mismo usuario
- var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
- var exists = await _ctx.Evaluaciones.AnyAsync(e => e.MatriculaId == dto.MatriculaId && e.UsuarioRegistro == userId && e.FechaRegistro.Date == System.DateTime.UtcNow.Date);
- if(exists) return Conflict(new { message = "Ya registró una evaluación para esta matrícula hoy" });
-
- var ev = new Models.Academico.Evaluacion{ MatriculaId = dto.MatriculaId, Nota = dto.Nota, Observaciones = dto.Observaciones ?? string.Empty, Participacion = dto.Participacion, Estado = dto.Estado, FechaRegistro = System.DateTime.UtcNow, UsuarioRegistro = userId };
- _ctx.Evaluaciones.Add(ev);
- await _ctx.SaveChangesAsync();
- return Ok(new { message = "Evaluación registrada", id = ev.Id });
  }
  }
 }

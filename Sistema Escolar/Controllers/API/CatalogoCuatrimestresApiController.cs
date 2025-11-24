@@ -9,7 +9,7 @@ namespace SistemaEscolar.Controllers.API
 {
  [ApiController]
  [Route("api/catalogo/cuatrimestres")]
- [Authorize(Policy = "Cursos.AsignarDocente")]
+ [Authorize] // permitir cualquier usuario autenticado (Docente, Administrador, etc.)
  public class CatalogoCuatrimestresApiController : ControllerBase
  {
  private readonly ApplicationDbContext _ctx;
