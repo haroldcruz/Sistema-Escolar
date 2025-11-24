@@ -1,0 +1,35 @@
+@page
+@model Sistema_Escolar.Pages.Instrumentos.IndexModel
+@{
+ ViewData["Title"] = "Instrumentos de Evaluación";
+}
+
+<h1>Instrumentos de Evaluación</h1>
+<table class="table">
+ <thead>
+ <tr>
+ <th>Nombre</th>
+ <th>Tipo</th>
+ <th>Fecha</th>
+ <th>Bloqueado</th>
+ <th>Acciones</th>
+ </tr>
+ </thead>
+ <tbody>
+ @foreach (var item in Model.Instrumentos)
+ {
+ <tr>
+ <td>@item.Nombre</td>
+ <td>@item.Tipo</td>
+ <td>@item.Fecha.ToShortDateString()</td>
+ <td>@(item.IsLocked ? "Sí" : "No")</td>
+ <td>
+ <form method="post" asp-page-handler="ToggleLock" asp-route-id="@item.Id" style="display:inline">
+ <button class="btn btn-sm btn-secondary" type="submit">@(item.IsLocked ? "Desbloquear" : "Bloquear")</button>
+ </form>
+ <a class="btn btn-sm btn-primary" asp-page="./RegistrarAsistencia" asp-route-id="@item.Id">Registrar Asistencia</a>
+ </td>
+ </tr>
+ }
+ </tbody>
+</table>

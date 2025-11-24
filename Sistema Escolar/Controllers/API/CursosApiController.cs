@@ -1,34 +1,38 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using SistemaEscolar.Interfaces.Cursos;
+using Microsoft.EntityFrameworkCore;
+using SistemaEscolar.Data;
 using SistemaEscolar.DTOs.Cursos;
+using SistemaEscolar.Interfaces.Cursos;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using System.Linq;
-using System.Security.Claims;
-using SistemaEscolar.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace SistemaEscolar.Controllers.API
 {
  [ApiController]
- [Route("api/cursos")] // Ruta fija para coincidir con fetch('/api/cursos')
+ [Route("api/cursos")]
  [Produces("application/json")]
- [Authorize(Policy = "Cursos.Ver")]
  public class CursosApiController : ControllerBase
  {
  private readonly ICursoService _cursos;
  private readonly ApplicationDbContext _ctx;
- public CursosApiController(ICursoService cursos, ApplicationDbContext ctx){ _cursos = cursos; _ctx = ctx; }
+ public CursosApiController(ICursoService cursos, ApplicationDbContext ctx) { _cursos = cursos; _ctx = ctx; }
 
  private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
  private string Ip() => HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
 
  // GET api/cursos
  [HttpGet]
- public async Task<IActionResult> GetAll()
+ [Authorize(Policy = "Cursos.Ver")]
+ public async Task<IActionResult> GetAll([FromQuery] int? cuatrimestreId)
  {
- var lista = await _cursos.GetAllAsync();
- return Ok(lista);
+ var q = _ctx.Cursos.AsNoTracking().Include(c => c.Cuatrimestre).AsQueryable();
+ if (cuatrimestreId.HasValue)
+ q = q.Where(c => c.CuatrimestreId == cuatrimestreId.Value);
+ var list = await q.OrderBy(c => c.Nombre).ToListAsync();
+ var result = list.Select(c => new { id = c.Id, codigo = c.Codigo, nombre = c.Nombre });
+ return Ok(result);
  }
 
  // GET api/cursos/{id}
@@ -46,8 +50,10 @@ namespace SistemaEscolar.Controllers.API
  public async Task<IActionResult> Create([FromBody] CursoCreateDTO dto)
  {
  if (!ModelState.IsValid) return BadRequest(ModelState);
- var ok = await _cursos.CreateAsync(dto, CurrentUserId(), Ip());
- if (!ok) return BadRequest(new { message = "No se pudo crear (código duplicado u otros)." });
+ var uid = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
+ var ip = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "0.0.0.0";
+ var ok = await _cursos.CreateAsync(dto, uid, ip);
+ if (!ok) return BadRequest(new { message = "No se pudo crear (quizá código duplicado)" });
  return Ok(new { message = "Curso creado" });
  }
 

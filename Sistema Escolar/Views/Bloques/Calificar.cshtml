@@ -1,0 +1,43 @@
+@{
+ ViewBag.Title = "Calificar Bloque";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var bloqueId = ViewBag.BloqueId ??0;
+}
+<h2>Calificar Bloque</h2>
+<div id="bloqueInfo"></div>
+<hr />
+<div id="alumnosContainer" style="display:none">
+ <form id="frmCalificar">
+ <table class="table"><thead><tr><th>Alumno</th><th>Nota (0-100)</th><th>Estado</th><th>Observaciones</th></tr></thead>
+ <tbody id="tbodyAlumnos"></tbody></table>
+ <button id="btnGuardar" class="btn btn-primary">Guardar calificaciones</button>
+ </form>
+</div>
+
+@section Scripts{
+ <script>
+ const bloqueId = @bloqueId;
+ async function loadBloque(){
+ const r = await fetch(`/api/bloques?cursoId=0&cuatrimestreId=0`, { credentials:'include' });
+ // we will fetch alumno list directly
+ }
+ async function loadAlumnos(){
+ const r = await fetch(`/api/bloques/${bloqueId}/alumnos`, { credentials:'include' });
+ if(!r.ok) return window.appShowToast('Error cargando alumnos','danger');
+ const list = await r.json();
+ const tbody = document.getElementById('tbodyAlumnos');
+ tbody.innerHTML = list.map(a=>`<tr data-mid='${a.id}'><td>${a.nombre}</td><td><input class='form-control nota' type='number' min='0' max='100' /></td><td><select class='form-select estado'><option>Aprobado</option><option>Reprobado</option></select></td><td><input class='form-control obs' /></td></tr>`).join('');
+ document.getElementById('alumnosContainer').style.display = '';
+ }
+ document.getElementById('frmCalificar').addEventListener('submit', async function(e){
+ e.preventDefault();
+ const rows = Array.from(document.querySelectorAll('#tbodyAlumnos tr'));
+ const items = rows.map(r=> ({ matriculaId: parseInt(r.getAttribute('data-mid')), nota: parseFloat(r.querySelector('.nota').value || '0'), estado: r.querySelector('.estado').value, observaciones: r.querySelector('.obs').value }));
+ const payload = { bloqueId: bloqueId, items };
+ const res = await fetch(`/api/bloques/${bloqueId}/calificaciones`, { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload), credentials:'include' });
+ if(res.ok){ const j = await res.json(); window.appShowToast(j.message || 'Calificaciones registradas','success'); }
+ else { const j = await res.json().catch(()=>({message:'Error'})); window.appShowToast(j.message || 'Error al guardar','danger'); }
+ });
+ loadAlumnos();
+ </script>
+}

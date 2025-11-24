@@ -1,0 +1,46 @@
+@{
+ ViewBag.Title = "Bloques de Evaluación";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Bloques de Evaluación</h2>
+<div class="row g-3">
+ <div class="col-md-4">
+ <label class="form-label">Cuatrimestre</label>
+ <select id="cuatrimestre" class="form-select"></select>
+ </div>
+ <div class="col-md-4">
+ <label class="form-label">Curso</label>
+ <select id="curso" class="form-select"></select>
+ </div>
+ <div class="col-md-4 d-flex align-items-end">
+ <button id="btnCargar" class="btn btn-primary">Listar Bloques</button>
+ </div>
+</div>
+<hr />
+<div id="listaBloques"></div>
+
+@section Scripts{
+ <script>
+ async function loadCuatrimestres(){
+ const r = await fetch('/api/catalogo/cuatrimestres', { credentials:'include' });
+ const list = await r.json();
+ document.getElementById('cuatrimestre').innerHTML = '<option value="">--Seleccione--</option>' + list.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ async function loadCursos(cuId){
+ if(!cuId) { document.getElementById('curso').innerHTML=''; return; }
+ const r = await fetch(`/api/cursos?cuatrimestreId=${cuId}`, { credentials:'include' });
+ const list = await r.json();
+ document.getElementById('curso').innerHTML = '<option value="">--Seleccione--</option>' + list.map(c=>`<option value="${c.id}">${c.codigo} - ${c.nombre}</option>`).join('');
+ }
+ document.getElementById('cuatrimestre').addEventListener('change', function(){ loadCursos(this.value); });
+ document.getElementById('btnCargar').addEventListener('click', async function(){
+ const cu = document.getElementById('cuatrimestre').value; const curso = document.getElementById('curso').value;
+ if(!cu || !curso) return window.appShowToast('Seleccione cuatrimestre y curso','warning');
+ const r = await fetch(`/api/bloques?cuatrimestreId=${cu}&cursoId=${curso}`, { credentials:'include' });
+ if(!r.ok) return window.appShowToast('Error cargando bloques','danger');
+ const list = await r.json();
+ document.getElementById('listaBloques').innerHTML = list.map(b=>`<div class="card mb-2 p-2"><div class='d-flex justify-content-between'><div><strong>${b.nombre}</strong> <small class='text-muted'>${b.tipo}</small></div><div><a class='btn btn-sm btn-success' href='/Bloques/Calificar?id=${b.id}'>Calificar</a></div></div></div>`).join('');
+ });
+ loadCuatrimestres();
+ </script>
+}

@@ -1,0 +1,192 @@
+@{
+ ViewBag.Title = "Matricular Estudiantes";
+ Layout = "/Views/Shared/_Layout.cshtml";
+ var estudiantes = ViewBag.Estudientes as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+ var cuatrimestres = ViewBag.Cuatrimestres as IEnumerable<dynamic> ?? Enumerable.Empty<dynamic>();
+}
+<h2>Matricular Estudiante</h2>
+<div class="row g-3">
+ <div class="col-md-4">
+ <label class="form-label">Estudiante</label>
+ <select id="estudiante" class="form-select">
+ <option value="">-- Seleccione --</option>
+ @foreach(var e in estudiantes){ <option value="@e.Id">@e.Nombre</option> }
+ </select>
+ <div class="mt-2"><button id="btnReloadMatriculas" class="btn btn-sm btn-outline-secondary">Recargar Matrículas</button></div>
+ </div>
+ <div class="col-md-4">
+ <label class="form-label">Cuatrimestre</label>
+ <select id="cuatrimestre" class="form-select">
+ <option value="">-- Seleccione --</option>
+ @foreach(var c in cuatrimestres){ <option value="@c.Id">@c.Nombre</option> }
+ </select>
+ </div>
+ <div class="col-md-4 d-flex align-items-end">
+ <button id="btnCargar" class="btn btn-primary">Cargar Cursos</button>
+ </div>
+</div>
+<hr />
+<div id="cursosContainer" style="display:none">
+ <h5>Cursos disponibles</h5>
+ <form id="frmMatricular">
+ <div id="conflicts" class="alert alert-warning d-none"></div>
+ <div id="existingMatriculas" class="mb-2 d-none"></div>
+ <div id="listaCursos"></div>
+ <div class="mt-3">
+ <button id="btnMatricular" type="submit" class="btn btn-success">Matricular</button>
+ <a class="btn btn-secondary" href="/">Cancelar</a>
+ </div>
+ </form>
+</div>
+
+@section Scripts{
+ <script>
+ const btnCargar = document.getElementById('btnCargar');
+ const btnMatricular = document.getElementById('btnMatricular');
+ const listaCursos = document.getElementById('listaCursos');
+ const cursosContainer = document.getElementById('cursosContainer');
+ const conflictsDiv = document.getElementById('conflicts');
+ const existingDiv = document.getElementById('existingMatriculas');
+ const btnReload = document.getElementById('btnReloadMatriculas');
+
+ async function safeJson(response){
+ try{ return await response.json(); } catch{ return null; }
+ }
+
+ async function fetchExistingMatriculas(estudianteId){
+ try{
+ const r = await fetch(`/api/matriculas?estudianteId=${estudianteId}&page=1&pageSize=200`, { credentials:'include' });
+ if(!r.ok) return [];
+ const j = await r.json();
+ return j.items || [];
+ }catch(e){ console.error(e); return []; }
+ }
+
+ // Update existing UI elements and checkboxes based on existing matriculas (does not fetch courses)
+ async function reloadExistingMatriculas(){
+ const estudiante = document.getElementById('estudiante').value;
+ const cuatr = document.getElementById('cuatrimestre').value;
+ if(!estudiante) return window.appShowToast('Seleccione un estudiante para recargar sus matrículas','warning');
+ try{
+ const existing = await fetchExistingMatriculas(estudiante);
+ const existingInCu = cuatr ? existing.filter(m => parseInt(m.cuatrimestreId) === parseInt(cuatr) || m.cuatrimestreId === cuatr) : existing;
+ const existingCourseIds = existingInCu.map(m => parseInt(m.cursoId));
+ // Update checkboxes if courses list is already rendered
+ if(listaCursos.children.length >0){
+ document.querySelectorAll('input[name="cursos"]').forEach(chk => {
+ const val = parseInt(chk.value);
+ const label = document.querySelector(`label[for='${chk.id}']`);
+ if(existingCourseIds.includes(val)){
+ chk.checked = true; chk.disabled = true;
+ if(label && !label.querySelector('.existing-tag')){
+ const span = document.createElement('small'); span.className = 'ms-2 text-muted existing-tag'; span.textContent = ' (Ya matriculado)'; label.appendChild(span);
+ }
+ } else {
+ // if previously marked as existing, remove disabled and tag
+ chk.disabled = false; chk.checked = false; if(label){ const tag = label.querySelector('.existing-tag'); if(tag) tag.remove(); }
+ }
+ });
+ }
+ // Update existingDiv summary
+ if(existingInCu.length>0){
+ existingDiv.innerHTML = '<strong>Matriculas ya existentes en este cuatrimestre:</strong><ul>' + existingInCu.map(m=>`<li>${m.curso} (${m.cuatrimestre})</li>`).join('') + '</ul>';
+ existingDiv.classList.remove('d-none');
+ } else {
+ existingDiv.innerHTML = '';
+ existingDiv.classList.add('d-none');
+ }
+ window.appShowToast('Matrículas recargadas','info');
+ } catch(err){ console.error(err); window.appShowToast('Error recargando matriculas','danger'); }
+ }
+
+ btnReload.addEventListener('click', function(e){ e.preventDefault(); reloadExistingMatriculas(); });
+
+ btnCargar.addEventListener('click', async function(e){
+ e.preventDefault();
+ const cu = document.getElementById('cuatrimestre').value;
+ const estudiante = document.getElementById('estudiante').value;
+ if(!cu) return window.appShowToast('Seleccione un cuatrimestre','warning');
+ btnCargar.disabled = true; const prev = btnCargar.innerHTML; btnCargar.innerHTML = 'Cargando...';
+ try{
+ const r = await fetch(`/api/cursos?cuatrimestreId=${cu}`, { credentials:'include' });
+ if(!r.ok){
+ const j = await safeJson(r);
+ window.appShowToast(j?.message || ('Error cargando cursos: ' + r.statusText),'danger');
+ return;
+ }
+ const data = await r.json();
+ // fetch existing matriculas for student if selected
+ let existing = [];
+ if(estudiante){
+ existing = await fetchExistingMatriculas(estudiante);
+ }
+ // filter those in the same cuatrimestre
+ const existingInCu = existing.filter(m => parseInt(m.cuatrimestreId) === parseInt(cu) || m.cuatrimestreId === cu);
+ const existingCourseIds = existingInCu.map(m => parseInt(m.cursoId));
+ // render list, marking already-matriculated
+ listaCursos.innerHTML = data.map(c=> {
+ const isExisting = existingCourseIds.includes(c.id);
+ if(isExisting) return `<div class="form-check"><input class="form-check-input" type="checkbox" name="cursos" value="${c.id}" id="c_${c.id}" checked disabled><label class="form-check-label text-muted" for="c_${c.id}">${c.codigo} - ${c.nombre} <small class='ms-2'>(Ya matriculado)</small></label></div>`;
+ return `<div class="form-check"><input class="form-check-input" type="checkbox" name="cursos" value="${c.id}" id="c_${c.id}"><label class="form-check-label" for="c_${c.id}">${c.codigo} - ${c.nombre}</label></div>`;
+ }).join('');
+ // show summary of existing matriculas
+ if(existingInCu.length>0){
+ existingDiv.innerHTML = '<strong>Matriculas ya existentes en este cuatrimestre:</strong><ul>' + existingInCu.map(m=>`<li>${m.curso} (${m.cuatrimestre})</li>`).join('') + '</ul>';
+ existingDiv.classList.remove('d-none');
+ } else {
+ existingDiv.innerHTML = '';
+ existingDiv.classList.add('d-none');
+ }
+ conflictsDiv.classList.add('d-none'); conflictsDiv.innerHTML = '';
+ cursosContainer.style.display = '';
+ } catch(err){
+ console.error(err);
+ window.appShowToast('Error de conexión al cargar cursos','danger');
+ } finally{
+ btnCargar.disabled = false; btnCargar.innerHTML = prev;
+ }
+ });
+
+ document.getElementById('frmMatricular').addEventListener('submit', async function(e){
+ e.preventDefault();
+ const estudiante = document.getElementById('estudiante').value;
+ const cuatr = document.getElementById('cuatrimestre').value;
+ if(!estudiante) return window.appShowToast('Seleccione un estudiante','warning');
+ if(!cuatr) return window.appShowToast('Seleccione un cuatrimestre','warning');
+ // only include checkboxes that are not disabled (avoid sending already matriculated)
+ const selected = Array.from(document.querySelectorAll('input[name="cursos"]:checked:not([disabled])')).map(x=> parseInt(x.value));
+ if(selected.length===0) return window.appShowToast('Seleccione al menos un curso que no esté matriculado','warning');
+
+ btnMatricular.disabled = true; const prevText = btnMatricular.innerHTML; btnMatricular.innerHTML = 'Matriculando...';
+ try{
+ const payload = { estudianteId: parseInt(estudiante), cuatrimestreId: parseInt(cuatr), cursosIds: selected };
+ const res = await fetch('/api/matriculas', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload), credentials:'include' });
+ if(res.ok){ const j = await safeJson(res); window.appShowToast(j?.message || 'Matrícula guardada','success');
+ // reset selections
+ document.getElementById('estudiante').value = '';
+ document.getElementById('cuatrimestre').value = '';
+ listaCursos.innerHTML = '';
+ cursosContainer.style.display = 'none';
+ conflictsDiv.classList.add('d-none'); conflictsDiv.innerHTML = '';
+ existingDiv.innerHTML = '';
+ }
+ else if(res.status ===409){
+ const j = await safeJson(res);
+ if(j && j.conflicts && Array.isArray(j.conflicts) && j.conflicts.length>0){
+ conflictsDiv.classList.remove('d-none');
+ conflictsDiv.innerHTML = `<strong>${j.message}</strong><ul>${j.conflicts.map(c=>`<li>${c.codigo} - ${c.nombre}</li>`).join('')}</ul>`;
+ window.appShowToast(j.message || 'Conflicto de matrícula','warning');
+ } else {
+ window.appShowToast(j?.message || 'Conflicto de matrícula','warning');
+ }
+ }
+ else {
+ const j = await safeJson(res);
+ window.appShowToast(j?.message || ('Error al matricular: ' + res.statusText),'danger');
+ }
+ }
+ catch(err){ console.error(err); window.appShowToast('Error de conexión al enviar la matrícula','danger'); }
+ finally{ btnMatricular.disabled = false; btnMatricular.innerHTML = prevText; }
+ });
+ </script>
+}

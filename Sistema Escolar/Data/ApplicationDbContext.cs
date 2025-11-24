@@ -18,8 +18,8 @@ namespace SistemaEscolar.Data
         public DbSet<Rol> Roles { get; set; }
         public DbSet<UsuarioRol> UsuarioRoles { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
-        public DbSet<Permiso> Permisos { get; set; } // agregado
-        public DbSet<RolPermiso> RolPermisos { get; set; } // agregado
+        public DbSet<Permiso> Permisos { get; set; }
+        public DbSet<RolPermiso> RolPermisos { get; set; }
 
         // Tablas académicas
         public DbSet<Curso> Cursos { get; set; }
@@ -29,7 +29,13 @@ namespace SistemaEscolar.Data
         public DbSet<CursoOfertaDocente> CursoOfertaDocentes { get; set; }
         public DbSet<Matricula> Matriculas { get; set; }
         public DbSet<Evaluacion> Evaluaciones { get; set; }
-        public DbSet<HorarioCurso> HorariosCurso { get; set; } // agregado
+        public DbSet<HorarioCurso> HorariosCurso { get; set; }
+        public DbSet<BloqueEvaluacion> BloqueEvaluaciones { get; set; }
+        public DbSet<CalificacionBloque> CalificacionBloques { get; set; }
+
+        // Nuevas entidades: Instrumentos y Asistencias
+        public DbSet<InstrumentoEvaluacion> InstrumentosEvaluacion { get; set; }
+        public DbSet<Asistencia> Asistencias { get; set; }
 
         // Bitácora
         public DbSet<BitacoraEntry> BitacoraEntries { get; set; }
@@ -41,6 +47,15 @@ namespace SistemaEscolar.Data
             // Evaluación: precision
             modelBuilder.Entity<Evaluacion>()
                 .Property(e => e.Nota)
+                .HasPrecision(5, 2);
+
+            // Ensure precision for new decimals to avoid silent truncation
+            modelBuilder.Entity<BloqueEvaluacion>()
+                .Property(b => b.Peso)
+                .HasPrecision(5, 2);
+
+            modelBuilder.Entity<CalificacionBloque>()
+                .Property(cb => cb.Nota)
                 .HasPrecision(5, 2);
 
             // UsuarioRol — PK compuesta
@@ -133,7 +148,32 @@ namespace SistemaEscolar.Data
                 .HasForeignKey(cd => cd.DocenteId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Matrícula
+            // BloqueEvaluacion y CalificacionBloque
+            modelBuilder.Entity<BloqueEvaluacion>()
+                .HasOne(b => b.Curso)
+                .WithMany()
+                .HasForeignKey(b => b.CursoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<BloqueEvaluacion>()
+                .HasOne(b => b.Cuatrimestre)
+                .WithMany()
+                .HasForeignKey(b => b.CuatrimestreId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CalificacionBloque>()
+                .HasOne(cb => cb.BloqueEvaluacion)
+                .WithMany(b => b.Calificaciones)
+                .HasForeignKey(cb => cb.BloqueEvaluacionId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CalificacionBloque>()
+                .HasOne(cb => cb.Matricula)
+                .WithMany()
+                .HasForeignKey(cb => cb.MatriculaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            // Matricula
             modelBuilder.Entity<Matricula>()
                 .HasOne(m => m.Estudiante)
                 .WithMany()
@@ -178,6 +218,34 @@ namespace SistemaEscolar.Data
             modelBuilder.Entity<HorarioCurso>()
                 .HasIndex(h => new { h.CursoId, h.DiaSemana, h.HoraInicio })
                 .IsUnique();
+
+            // Relaciones y navegaciones para Instrumento/Asistencia
+            modelBuilder.Entity<InstrumentoEvaluacion>()
+                .HasMany(i => i.Asistencias)
+                .WithOne(a => a.InstrumentoEvaluacion)
+                .HasForeignKey(a => a.InstrumentoEvaluacionId);
+
+            modelBuilder.Entity<Asistencia>()
+                .HasOne(a => a.InstrumentoEvaluacion)
+                .WithMany(i => i.Asistencias)
+                .HasForeignKey(a => a.InstrumentoEvaluacionId);
+
+            // Seed minimal test data
+            modelBuilder.Entity<Rol>().HasData(
+                new Rol{ Id =1, Nombre = "Administrador" },
+                new Rol{ Id =2, Nombre = "Docente" },
+                new Rol{ Id =3, Nombre = "Estudiante" }
+            );
+
+            modelBuilder.Entity<Cuatrimestre>().HasData(
+                new Cuatrimestre{ Id =1, Nombre = "Cuatrimestre1", Numero =1 },
+                new Cuatrimestre{ Id =2, Nombre = "Cuatrimestre2", Numero =2 }
+            );
+
+            modelBuilder.Entity<Curso>().HasData(
+                new Curso{ Id =1, Codigo = "C001", Nombre = "Matemáticas Básicas", Descripcion = "Curso de matemática", Creditos =3, CuatrimestreId =1, FechaCreacion = System.DateTime.UtcNow },
+                new Curso{ Id =2, Codigo = "C002", Nombre = "Introducción a la Programación", Descripcion = "Curso de programación", Creditos =4, CuatrimestreId =1, FechaCreacion = System.DateTime.UtcNow }
+            );
         }
     }
 }

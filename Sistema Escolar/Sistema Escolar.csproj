@@ -2,9 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>Sistema_Escolar</RootNamespace>
+    <Nullable>enable</Nullable>
+    <RootNamespace>SistemaEscolar</RootNamespace>
+    <AssemblyName>SistemaEscolar</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

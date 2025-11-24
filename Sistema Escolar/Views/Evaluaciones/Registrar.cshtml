@@ -1,0 +1,88 @@
+@{
+ ViewBag.Title = "Registrar Evaluación";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Registrar Evaluación</h2>
+<div class="row g-3">
+ <div class="col-md-6">
+ <label class="form-label">Buscar estudiante</label>
+ <input id="txtBuscar" class="form-control" placeholder="Nombre, apellidos o identificación" />
+ <div id="results" class="mt-2"></div>
+ </div>
+ <div class="col-md-6">
+ <label class="form-label">Detalles del estudiante</label>
+ <div id="studentDetails">Seleccione un estudiante</div>
+ </div>
+</div>
+<hr />
+<div id="evalForm" style="display:none">
+ <h5>Evaluación</h5>
+ <form id="frmEval">
+ <input type="hidden" id="matriculaId" />
+ <div class="mb-2">
+ <label class="form-label">Nota (0-100)</label>
+ <input id="nota" type="number" min="0" max="100" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Participación</label>
+ <input id="participacion" class="form-control" />
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Estado</label>
+ <select id="estado" class="form-select"><option>Aprobado</option><option>Reprobado</option></select>
+ </div>
+ <div class="mb-2">
+ <label class="form-label">Observaciones</label>
+ <textarea id="observaciones" class="form-control"></textarea>
+ </div>
+ <button id="btnSave" class="btn btn-primary">Guardar evaluación</button>
+ </form>
+</div>
+
+@section Scripts{
+ <script>
+ const txt = document.getElementById('txtBuscar');
+ const results = document.getElementById('results');
+ const details = document.getElementById('studentDetails');
+ let debounce;
+ txt.addEventListener('input', function(){
+ clearTimeout(debounce);
+ debounce = setTimeout(()=> search(txt.value),300);
+ });
+ async function search(term){
+ if(!term || term.length<3) { results.innerHTML=''; return; }
+ const r = await fetch(`/api/estudiantes/buscar?term=${encodeURIComponent(term)}`, { credentials:'include' });
+ if(!r.ok) return;
+ const list = await r.json();
+ results.innerHTML = list.map(s=> `<div class="list-group-item list-group-item-action" data-id="${s.id}">${s.nombreCompleto} <small class="text-muted">${s.identificacion}</small></div>`).join('');
+ results.querySelectorAll('.list-group-item').forEach(el=> el.onclick = ()=>selectStudent(el.getAttribute('data-id')));
+ }
+ async function selectStudent(id){
+ const r = await fetch(`/api/estudiantes/${id}/matriculas`, { credentials:'include' });
+ if(!r.ok) return window.appShowToast('Error obteniendo matriculas','danger');
+ const list = await r.json();
+ details.innerHTML = `<strong>Matriculas:</strong><ul>${list.map(m=>`<li data-mid='${m.id}'>${m.curso} - ${m.cuatrimestre}</li>`).join('')}</ul>`;
+ // attach click to select matricula
+ details.querySelectorAll('li[data-mid]').forEach(li=> li.onclick = ()=>{
+ document.getElementById('matriculaId').value = li.getAttribute('data-mid');
+ document.getElementById('evalForm').style.display = '';
+ });
+ }
+ document.getElementById('frmEval').addEventListener('submit', async function(e){
+ e.preventDefault();
+ const matId = parseInt(document.getElementById('matriculaId').value || '0');
+ const nota = parseFloat(document.getElementById('nota').value || '0');
+ const part = document.getElementById('participacion').value;
+ const estado = document.getElementById('estado').value;
+ const obs = document.getElementById('observaciones').value;
+ if(matId<=0) return window.appShowToast('Seleccione matrícula','warning');
+ if(isNaN(nota) || nota<0 || nota>100) return window.appShowToast('Nota inválida','warning');
+ if(!part) return window.appShowToast('Ingrese participación','warning');
+ if(!estado) return window.appShowToast('Seleccione estado','warning');
+ const payload = { matriculaId: matId, nota, participacion: part, estado, observaciones: obs };
+ const res = await fetch('/api/evaluaciones', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload), credentials:'include' });
+ if(res.ok){ const j = await res.json(); window.appShowToast(j.message || 'Evaluación registrada','success'); }
+ else { const j = await res.json().catch(()=>({message:'Error'})); window.appShowToast(j.message || 'Error al registrar','danger'); }
+ });
+ </script>
+}

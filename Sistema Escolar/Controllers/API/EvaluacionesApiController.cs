@@ -153,5 +153,23 @@ namespace SistemaEscolar.Controllers.API
 
  return CreatedAtAction(nameof(GetEstudiantesPorCurso), new { cursoId = cursoId }, new { message = "Evaluación creada", evaluacionId = evaluacion.Id });
  }
+
+ [HttpPost]
+ public async Task<IActionResult> Create([FromBody] EvaluacionCreateDTO dto)
+ {
+ if(!ModelState.IsValid) return BadRequest(ModelState);
+ // validar existencia de matricula
+ var matricula = await _ctx.Matriculas.Include(m=>m.Curso).Include(m=>m.Cuatrimestre).FirstOrDefaultAsync(m=>m.Id==dto.MatriculaId);
+ if(matricula==null) return NotFound(new{ message = "Matrícula no encontrada" });
+ // evitar duplicados por mismo matricula y fecha por el mismo usuario
+ var userId = int.Parse(User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "0");
+ var exists = await _ctx.Evaluaciones.AnyAsync(e => e.MatriculaId == dto.MatriculaId && e.UsuarioRegistro == userId && e.FechaRegistro.Date == System.DateTime.UtcNow.Date);
+ if(exists) return Conflict(new { message = "Ya registró una evaluación para esta matrícula hoy" });
+
+ var ev = new Models.Academico.Evaluacion{ MatriculaId = dto.MatriculaId, Nota = dto.Nota, Observaciones = dto.Observaciones ?? string.Empty, Participacion = dto.Participacion, Estado = dto.Estado, FechaRegistro = System.DateTime.UtcNow, UsuarioRegistro = userId };
+ _ctx.Evaluaciones.Add(ev);
+ await _ctx.SaveChangesAsync();
+ return Ok(new { message = "Evaluación registrada", id = ev.Id });
+ }
  }
 }

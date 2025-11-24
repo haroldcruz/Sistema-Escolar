@@ -45,6 +45,12 @@
  <li class="nav-item"><a class="nav-link" href="/Historial/BuscarEvaluacion">Buscar y Evaluar</a></li>
  }
  if (User.IsInRole("Estudiante")) { <li class="nav-item"><a class="nav-link" href="/MiHistorial">Mi Historial</a></li> }
+ // Nuevo: enlace a matriculación (solo para admin o permiso Cursos.Crear)
+ if (User.HasClaim("permiso","Cursos.Crear") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Matriculas/Crear">Matricular</a></li> }
+ // Estadísticas: disponible para Docente y Admin
+ if (User.IsInRole("Docente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Estadisticas">Estadísticas</a></li> }
+ // Bloques de evaluación
+ if (User.IsInRole("Docente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bloques">Bloques</a></li> }
  }
  }
  </ul>
@@ -86,6 +92,22 @@
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
  <script src="/js/site.js"></script>
  <script>
+ // Ensure a safe global appShowToast exists even if site.js failed to define it
+ if (typeof window.appShowToast !== 'function') {
+ window.appShowToast = function(message, type){
+ try{
+ const toastEl = document.getElementById('appToast');
+ if(!toastEl) { alert(message); return; }
+ const body = toastEl.querySelector('.toast-body');
+ if(body) body.textContent = message;
+ toastEl.className = toastEl.className.replace(/text-bg-(\w+)/g, '');
+ toastEl.classList.add('text-bg-' + (type || 'info'));
+ const toast = new bootstrap.Toast(toastEl, { delay:5000 });
+ toast.show();
+ }catch(e){ alert(message); }
+ };
+ }
+
  document.addEventListener('DOMContentLoaded', function(){
  var toastEl = document.getElementById('appToast');
  if (!toastEl) return;

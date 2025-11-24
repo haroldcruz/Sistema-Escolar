@@ -39,6 +39,23 @@
  <a class="btn btn-outline-dark w-100" href="/Bitacora">Bitácora</a>
  </div>
  }
+ @if (User?.IsInRole("Docente") == true || User?.IsInRole("Administrador") == true)
+ {
+ <div class="col-md-3">
+ <div class="card p-3">
+ <h5>Estadísticas</h5>
+ <p>Ver estadísticas por curso y cuatrimestre</p>
+ <a class="btn btn-sm btn-primary" href="/Estadisticas">Ir a Estadísticas</a>
+ </div>
+ </div>
+ }
+ <div class="col-md-3">
+ <div class="card p-3">
+ <h5>Matriculación</h5>
+ <p>Matricular estudiantes</p>
+ <a class="btn btn-sm btn-primary" href="/Matriculas/Crear">Matricular</a>
+ </div>
+ </div>
  </div>
  }
  else

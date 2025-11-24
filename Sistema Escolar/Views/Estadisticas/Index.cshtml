@@ -1,0 +1,61 @@
+@{
+ ViewBag.Title = "Estadísticas Académicas";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<h2>Estadísticas por curso y cuatrimestre</h2>
+<div class="row g-3">
+ <div class="col-md-4">
+ <label class="form-label">Cuatrimestre</label>
+ <select id="cuatrimestre" class="form-select"></select>
+ </div>
+ <div class="col-md-4">
+ <label class="form-label">Curso</label>
+ <select id="curso" class="form-select"></select>
+ </div>
+ <div class="col-md-4 d-flex align-items-end">
+ <button id="btnCargar" class="btn btn-primary">Cargar estadísticas</button>
+ </div>
+</div>
+<hr />
+<div id="resultados" style="display:none">
+ <div class="row">
+ <div class="col-md-4"><div class="card p-3"><h5 id="pParticipacion">0%</h5><p>Participación</p></div></div>
+ <div class="col-md-4"><div class="card p-3"><h5 id="pAprobados">0%</h5><p>Aprobados</p></div></div>
+ <div class="col-md-4"><div class="card p-3"><h5 id="pReprobados">0%</h5><p>Reprobados</p></div></div>
+ </div>
+ <canvas id="chart" height="120"></canvas>
+</div>
+
+@section Scripts{
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ <script>
+ async function loadCuatrimestres(){
+ const r = await fetch('/api/catalogo/cuatrimestres', { credentials:'include' });
+ const list = await r.json();
+ document.getElementById('cuatrimestre').innerHTML = '<option value="">--Seleccione--</option>' + list.map(c=>`<option value="${c.id}">${c.nombre}</option>`).join('');
+ }
+ async function loadCursos(cuId){
+ if(!cuId) { document.getElementById('curso').innerHTML=''; return; }
+ const r = await fetch(`/api/cursos?cuatrimestreId=${cuId}`, { credentials:'include' });
+ const list = await r.json();
+ document.getElementById('curso').innerHTML = '<option value="">--Seleccione--</option>' + list.map(c=>`<option value="${c.id}">${c.codigo} - ${c.nombre}</option>`).join('');
+ }
+ document.getElementById('cuatrimestre').addEventListener('change', function(){ loadCursos(this.value); });
+ document.getElementById('btnCargar').addEventListener('click', async function(){
+ const cu = document.getElementById('cuatrimestre').value; const curso = document.getElementById('curso').value;
+ if(!cu || !curso) return window.appShowToast('Seleccione cuatrimestre y curso','warning');
+ const r = await fetch(`/api/estadisticas?cuatrimestreId=${cu}&cursoId=${curso}`, { credentials:'include' });
+ if(!r.ok) return window.appShowToast('Error cargando estadísticas','danger');
+ const d = await r.json();
+ document.getElementById('pParticipacion').innerText = d.porcentajeParticipacion + '%';
+ document.getElementById('pAprobados').innerText = d.porcentajeAprobados + '%';
+ document.getElementById('pReprobados').innerText = d.porcentajeReprobados + '%';
+ document.getElementById('resultados').style.display = '';
+ // chart
+ const ctx = document.getElementById('chart').getContext('2d');
+ if(window._chart) window._chart.destroy();
+ window._chart = new Chart(ctx, { type:'doughnut', data: { labels:['Aprobados','Reprobados','Sin evaluar'], datasets:[{ data: [d.totalAprobados, d.totalReprobados, Math.max(0, d.totalMatriculados - d.totalConEvaluacion)], backgroundColor:['#4CAF50','#F44336','#9E9E9E'] }] }, options:{} });
+ });
+ loadCuatrimestres();
+ </script>
+}
