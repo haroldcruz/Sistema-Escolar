@@ -10,6 +10,7 @@ using System;
 
 namespace SistemaEscolar.Controllers
 {
+ // Vista para docentes que usa las APIs implementadas
  [Authorize(Roles = "Docente,Coordinador,Administrador")]
  public class EvaluacionesController : Controller
  {
@@ -18,7 +19,6 @@ namespace SistemaEscolar.Controllers
 
  public IActionResult Index()
  {
- // Página para buscar estudiantes y registrar evaluación
  return View();
  }
 

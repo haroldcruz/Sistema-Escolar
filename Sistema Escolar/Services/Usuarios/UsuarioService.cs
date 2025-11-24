@@ -1,13 +1,14 @@
 using Microsoft.EntityFrameworkCore;
 using SistemaEscolar.Data;
 using SistemaEscolar.DTOs.Usuarios;
-using SistemaEscolar.Interfaces.Usuarios;
 using SistemaEscolar.Interfaces.Bitacora;
+using SistemaEscolar.Interfaces.Usuarios;
 using SistemaEscolar.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
 namespace SistemaEscolar.Services.Usuarios
 {
@@ -15,146 +16,188 @@ namespace SistemaEscolar.Services.Usuarios
  {
  private readonly ApplicationDbContext _ctx;
  private readonly IBitacoraService _bitacora;
+ private readonly IHttpContextAccessor _http;
 
- public UsuarioService(ApplicationDbContext ctx, IBitacoraService bitacora)
+ public UsuarioService(ApplicationDbContext ctx, IBitacoraService bitacora, IHttpContextAccessor http)
  {
  _ctx = ctx;
  _bitacora = bitacora;
+ _http = http;
  }
 
- public async Task<IEnumerable<UsuarioDTO>> GetAllAsync()
+ private int CurrentUserId()
  {
- var users = await _ctx.Usuarios
- .Include(u => u.UsuarioRoles)
- .ThenInclude(ur => ur.Rol)
- .AsNoTracking()
- .ToListAsync();
+ try
+ {
+ var val = _http.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+ if (int.TryParse(val, out var id)) return id;
+ }
+ catch { }
+ return0;
+ }
+ private string Ip() => _http.HttpContext?.Connection?.RemoteIpAddress?.ToString() ?? "0.0.0.0";
 
- return users.Select(u => new UsuarioDTO
+ public async Task<IEnumerable<DTOs.Usuarios.UsuarioDTO>> GetAllAsync()
+ {
+ var users = await _ctx.Usuarios.Include(u => u.UsuarioRoles).ThenInclude(ur => ur.Rol).ToListAsync();
+ return users.Select(u => new DTOs.Usuarios.UsuarioDTO
  {
  Id = u.Id,
  NombreCompleto = (u.Nombre + " " + u.Apellidos).Trim(),
  Email = u.Email,
- Identificacion = u.Identificacion ?? string.Empty,
- Roles = u.UsuarioRoles?.Select(x => x.Rol?.Nombre ?? string.Empty).Where(s => !string.IsNullOrEmpty(s)).ToList() ?? new List<string>()
+ Identificacion = u.Identificacion,
+ Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).ToList()
  }).ToList();
  }
 
- public async Task<UsuarioDTO> GetByIdAsync(int id)
+ public async Task<DTOs.Usuarios.UsuarioDTO> GetByIdAsync(int id)
  {
- var u = await _ctx.Usuarios
- .Include(x => x.UsuarioRoles).ThenInclude(ur => ur.Rol)
- .AsNoTracking()
- .FirstOrDefaultAsync(x => x.Id == id);
+ var u = await _ctx.Usuarios.Include(us => us.UsuarioRoles).ThenInclude(ur => ur.Rol).FirstOrDefaultAsync(x => x.Id == id);
  if (u == null) return null!;
-
- return new UsuarioDTO
+ return new DTOs.Usuarios.UsuarioDTO
  {
  Id = u.Id,
  NombreCompleto = (u.Nombre + " " + u.Apellidos).Trim(),
  Email = u.Email,
- Identificacion = u.Identificacion ?? string.Empty,
- Roles = u.UsuarioRoles?.Select(x => x.Rol?.Nombre ?? string.Empty).Where(s => !string.IsNullOrEmpty(s)).ToList() ?? new List<string>()
+ Identificacion = u.Identificacion,
+ Roles = u.UsuarioRoles.Select(ur => ur.Rol.Nombre).ToList()
  };
  }
 
- public async Task<bool> CreateAsync(UsuarioCreateDTO dto)
+ public async Task<(bool ok, string? error)> CreateAsync(UsuarioCreateDTO dto)
  {
- if (dto == null) return false;
- if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Nombre)) return false;
+ // Validaciones básicas
+ if (string.IsNullOrWhiteSpace(dto.Email) || string.IsNullOrWhiteSpace(dto.Identificacion)) return (false, "Email e identificación son obligatorios");
+ // Duplicados
+ if (await _ctx.Usuarios.AnyAsync(x => x.Email == dto.Email)) return (false, "Email duplicado");
+ if (await _ctx.Usuarios.AnyAsync(x => x.Identificacion == dto.Identificacion)) return (false, "Identificación duplicada");
 
- // Evitar duplicados por email
- if (await _ctx.Usuarios.AnyAsync(u => u.Email == dto.Email)) return false;
-
+ try
+ {
  var user = new Usuario
  {
- Nombre = dto.Nombre?.Trim() ?? string.Empty,
- Apellidos = dto.Apellidos?.Trim() ?? string.Empty,
- Email = dto.Email.Trim(),
- Identificacion = dto.Identificacion?.Trim() ?? string.Empty,
+ Nombre = dto.Nombre,
+ Apellidos = dto.Apellidos,
+ Email = dto.Email,
+ Identificacion = dto.Identificacion,
+ IsActive = true
  };
 
- _ctx.Usuarios.Add(user);
- await _ctx.SaveChangesAsync();
+ // crear hash y salt
+ SistemaEscolar.Helpers.PasswordHasher.CreatePasswordHash(dto.Password ?? string.Empty, out var hash, out var salt);
+ user.PasswordHash = hash;
+ user.PasswordSalt = salt;
 
- // Asignar roles si vienen
- if (dto.RolesIds != null && dto.RolesIds.Any())
- {
+ _ctx.Usuarios.Add(user);
+ // preparar roles
  foreach (var rid in dto.RolesIds.Distinct())
  {
  if (await _ctx.Roles.AnyAsync(r => r.Id == rid))
  {
- _ctx.UsuarioRoles.Add(new UsuarioRol { UsuarioId = user.Id, RolId = rid });
+ _ctx.UsuarioRoles.Add(new UsuarioRol { Usuario = user, RolId = rid });
  }
- }
- await _ctx.SaveChangesAsync();
  }
 
- // Registrar en bitácora (usuarioId desconocido desde aquí)
+ // Guardar todo en una sola transacción implícita por SaveChanges
+ await _ctx.SaveChangesAsync();
+
+ // Registrar en bitácora (usuario creador desconocido aquí) pero no propagar errores de bitácora
  try
  {
- await _bitacora.RegistrarAsync(0, $"Crear usuario {user.Email}", "Usuarios", string.Empty);
+ await _bitacora.RegistrarAsync(CurrentUserId(), $"Crear usuario {user.Email}", "Seguridad", Ip());
+ }
+ catch
+ {
+ // swallow bitacora errors
+ }
+
+ return (true, null);
+ }
+ catch (DbUpdateException ex)
+ {
+ // Registrar error y devolver false con detalle para controlador, but swallow bitacora errors
+ try
+ {
+ await _bitacora.RegistrarAsync(CurrentUserId(), $"Error al crear usuario: {ex.InnerException?.Message ?? ex.Message}", "Seguridad", Ip());
  }
  catch { }
-
- return true;
+ return (false, "Error al guardar en la base de datos");
+ }
  }
 
- public async Task<bool> UpdateAsync(int id, UsuarioUpdateDTO dto)
+ public async Task<(bool ok, string? error)> UpdateAsync(int id, UsuarioUpdateDTO dto)
  {
- if (dto == null) return false;
  var user = await _ctx.Usuarios.Include(u => u.UsuarioRoles).FirstOrDefaultAsync(u => u.Id == id);
- if (user == null) return false;
+ if (user == null) return (false, "Usuario no encontrado");
+ // Validar duplicados (excluyendo al propio usuario)
+ if (await _ctx.Usuarios.AnyAsync(x => x.Email == dto.Email && x.Id != id)) return (false, "Email duplicado");
+ if (await _ctx.Usuarios.AnyAsync(x => x.Identificacion == dto.Identificacion && x.Id != id)) return (false, "Identificación duplicada");
 
- // Actualizar datos
- user.Nombre = dto.Nombre?.Trim() ?? user.Nombre;
- user.Apellidos = dto.Apellidos?.Trim() ?? user.Apellidos;
- user.Email = dto.Email?.Trim() ?? user.Email;
- user.Identificacion = dto.Identificacion?.Trim() ?? user.Identificacion;
+ try
+ {
+ user.Nombre = dto.Nombre;
+ user.Apellidos = dto.Apellidos;
+ user.Email = dto.Email;
+ user.Identificacion = dto.Identificacion;
+ user.IsActive = dto.IsActive;
 
- // Actualizar roles: sincronizar
- var prev = user.UsuarioRoles.Select(x => x.RolId).ToList();
- var incoming = dto.RolesIds ?? new List<int>();
+ var newPassword = dto.Password ?? dto.NewPassword;
+ if (!string.IsNullOrWhiteSpace(newPassword))
+ {
+ SistemaEscolar.Helpers.PasswordHasher.CreatePasswordHash(newPassword, out var hash, out var salt);
+ user.PasswordHash = hash;
+ user.PasswordSalt = salt;
+ }
 
- var toRemove = user.UsuarioRoles.Where(ur => !incoming.Contains(ur.RolId)).ToList();
- if (toRemove.Any()) _ctx.UsuarioRoles.RemoveRange(toRemove);
-
- var toAdd = incoming.Where(rid => !prev.Contains(rid)).Distinct();
+ // actualizar roles: eliminar no seleccionados, agregar nuevos
+ var current = user.UsuarioRoles.Select(ur => ur.RolId).ToList();
+ var toRemove = user.UsuarioRoles.Where(ur => !dto.RolesIds.Contains(ur.RolId)).ToList();
+ _ctx.UsuarioRoles.RemoveRange(toRemove);
+ var toAdd = dto.RolesIds.Where(rid => !current.Contains(rid)).Distinct();
  foreach (var rid in toAdd)
  {
- if (await _ctx.Roles.AnyAsync(r => r.Id == rid))
- _ctx.UsuarioRoles.Add(new UsuarioRol { UsuarioId = user.Id, RolId = rid });
+ if (await _ctx.Roles.AnyAsync(r => r.Id == rid)) _ctx.UsuarioRoles.Add(new UsuarioRol { UsuarioId = user.Id, RolId = rid });
  }
 
+ // Guardar todos los cambios en una sola operación
  await _ctx.SaveChangesAsync();
 
- // Bitácora
+ // Registrar en bitácora pero swallow any bitacora exceptions
  try
  {
- await _bitacora.RegistrarAsync(0, $"Actualizar usuario {user.Email}", "Usuarios", string.Empty);
+ await _bitacora.RegistrarAsync(CurrentUserId(), $"Actualizar usuario {user.Email}. Perms added/removed", "Seguridad", Ip());
  }
  catch { }
 
- return true;
+ var added = string.Join(',', toAdd);
+ var removed = string.Join(',', toRemove.Select(x => x.RolId));
+ return (true, null);
+ }
+ catch (DbUpdateException ex)
+ {
+ try { await _bitacora.RegistrarAsync(CurrentUserId(), $"Error al actualizar usuario: {ex.InnerException?.Message ?? ex.Message}", "Seguridad", Ip()); } catch { }
+ return (false, "Error al guardar en la base de datos");
+ }
  }
 
- public async Task<bool> DeleteAsync(int id)
+ public async Task<(bool ok, string? error)> DeleteAsync(int id)
  {
- var user = await _ctx.Usuarios.Include(u => u.UsuarioRoles).FirstOrDefaultAsync(u => u.Id == id);
- if (user == null) return false;
+ var user = await _ctx.Usuarios.Include(u => u.UsuarioRoles).FirstOrDefaultAsync(idu => idu.Id == id);
+ if (user == null) return (false, "Usuario no encontrado");
 
- // No eliminar si tiene matrículas o asignaciones de docente
- var hasMatriculas = await _ctx.Matriculas.AnyAsync(m => m.EstudianteId == id);
- var hasAsignaciones = await _ctx.CursoDocentes.AnyAsync(cd => cd.DocenteId == id);
- if (hasMatriculas || hasAsignaciones) return false;
-
- _ctx.UsuarioRoles.RemoveRange(user.UsuarioRoles);
- _ctx.Usuarios.Remove(user);
+ try
+ {
+ // Soft delete: desactivar
+ user.IsActive = false;
  await _ctx.SaveChangesAsync();
-
- try { await _bitacora.RegistrarAsync(0, $"Eliminar usuario {user.Email}", "Usuarios", string.Empty); } catch { }
-
- return true;
+ try { await _bitacora.RegistrarAsync(CurrentUserId(), $"Desactivar usuario {user.Email}", "Seguridad", Ip()); } catch { }
+ return (true, null);
+ }
+ catch (DbUpdateException ex)
+ {
+ try { await _bitacora.RegistrarAsync(CurrentUserId(), $"Error al desactivar usuario: {ex.InnerException?.Message ?? ex.Message}", "Seguridad", Ip()); } catch { }
+ return (false, "Error al guardar en la base de datos");
+ }
  }
  }
 }

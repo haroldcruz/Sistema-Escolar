@@ -9,8 +9,8 @@ namespace SistemaEscolar.Interfaces.Usuarios
  {
  Task<IEnumerable<UsuarioDTO>> GetAllAsync();
  Task<UsuarioDTO> GetByIdAsync(int id);
- Task<bool> CreateAsync(UsuarioCreateDTO dto);
- Task<bool> UpdateAsync(int id, UsuarioUpdateDTO dto);
- Task<bool> DeleteAsync(int id);
+ Task<(bool ok, string? error)> CreateAsync(UsuarioCreateDTO dto);
+ Task<(bool ok, string? error)> UpdateAsync(int id, UsuarioUpdateDTO dto);
+ Task<(bool ok, string? error)> DeleteAsync(int id);
  }
 }

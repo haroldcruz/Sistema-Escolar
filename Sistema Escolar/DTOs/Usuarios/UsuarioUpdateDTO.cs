@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
 namespace SistemaEscolar.DTOs.Usuarios
 {
@@ -6,12 +7,27 @@ namespace SistemaEscolar.DTOs.Usuarios
     public class UsuarioUpdateDTO
     {
         public int Id { get; set; }
+        [Required]
+        [MaxLength(100)]
         public string Nombre { get; set; } = string.Empty;
+        [MaxLength(200)]
         public string Apellidos { get; set; } = string.Empty;
+        [Required]
+        [EmailAddress]
         public string Email { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(50)]
         public string Identificacion { get; set; } = string.Empty;
-        public List<int> RolesIds { get; set; } = new();
-        // NUEVO: contraseña nueva opcional
+        // Opcional: cambiar contraseña
+        [MinLength(6)]
+        public string? Password { get; set; }
+        // Vista antigua usa NewPassword
+        [MinLength(6)]
         public string? NewPassword { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
+        // Roles seleccionados
+        public List<int> RolesIds { get; set; } = new();
     }
 }

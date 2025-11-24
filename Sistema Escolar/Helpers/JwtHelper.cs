@@ -16,7 +16,7 @@ namespace SistemaEscolar.Helpers
     public static class JwtHelper
     {
         // Genera el JWT principal con roles y permisos
-        public static string GenerateToken(Usuario usuario, IEnumerable<string> roles, ApplicationDbContext ctx, JwtSettings settings)
+        public static string GenerateToken(Usuario usuario, IEnumerable<string> roles, ApplicationDbContext ctx, SistemaEscolar.Models.Auth.JwtSettings settings)
         {
             var handler = new JwtSecurityTokenHandler();
             var key = Encoding.UTF8.GetBytes(settings.Secret);

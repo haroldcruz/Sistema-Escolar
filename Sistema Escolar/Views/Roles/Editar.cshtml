@@ -1,31 +1,27 @@
 @model SistemaEscolar.DTOs.Usuarios.RolUpdateDTO
-@{ ViewBag.Title = "Editar Rol"; Layout = "/Views/Shared/_Layout.cshtml"; var permisos = ViewBag.Permisos as IEnumerable<SistemaEscolar.Models.Permiso>; }
+@{ 
+    ViewBag.Title = "Editar Rol"; 
+    Layout = "/Views/Shared/_Layout.cshtml"; 
+    var permisos = ViewBag.Permisos as IEnumerable<SistemaEscolar.Models.Permiso>; 
+}
 <h2>Editar Rol</h2>
-<form method="post">
- <input type="hidden" asp-for="Id" />
- <div class="mb-2">
- <label class="form-label">Nombre</label>
- <input asp-for="Nombre" class="form-control" />
- <span asp-validation-for="Nombre" class="text-danger"></span>
- </div>
- <div class="mb-2">
- <label class="form-label">Permisos</label>
- <div class="row">
- @foreach(var p in permisos){
- var checkedAttr = Model.PermisosIds.Contains(p.Id) ? "checked" : string.Empty;
- <div class="col-md-4">
- <div class="form-check">
- <input class="form-check-input" type="checkbox" name="PermisosIds" value="@p.Id" id="perm_@p.Id" @checkedAttr />
- <label class="form-check-label" for="perm_@p.Id">@p.Codigo</label>
- </div>
- </div>
- }
- </div>
- </div>
- <button class="btn btn-primary">Guardar</button>
- <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+<form method="post" action="/Seguridad/Roles/editar/@Model.Id">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label class="form-label">Nombre</label>
+        <input class="form-control" name="Nombre" value="@Model.Nombre" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Permisos</label>
+        <div class="mb-2">
+            <a class="btn btn-sm btn-secondary" href="/Seguridad/RolPermisos/@Model.Id">Editar permisos del rol</a>
+            <a class="btn btn-sm btn-outline-primary" href="/Seguridad/Permisos/crear">Crear permiso</a>
+        </div>
+    </div>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a class="btn btn-link" href="/Seguridad/Roles">Volver</a>
 </form>
 <form method="post" asp-action="Eliminar" asp-route-id="@Model.Id" onsubmit="return confirm('¿Eliminar rol?');" class="mt-3">
- <button class="btn btn-danger">Eliminar Rol</button>
+    <button class="btn btn-danger">Eliminar Rol</button>
 </form>
 @section Scripts{<partial name="_ValidationScriptsPartial" />}

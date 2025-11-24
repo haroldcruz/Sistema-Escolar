@@ -1,0 +1,69 @@
+@{
+ ViewData["Title"] = "Buscar y Evaluar Estudiante";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<div class="row">
+ <div class="col-md-6">
+ <div class="mb-3">
+ <label class="form-label">Buscar estudiante</label>
+ <input id="buscarEstudiante" class="form-control" placeholder="Nombre, apellido o identificación" />
+ </div>
+ <div id="resultadosEstudiantes"></div>
+ <div id="estudianteDetalle" class="mt-3"></div>
+ </div>
+ <div class="col-md-6">
+ <div class="card mb-3" id="evalCard">
+ <div class="card-body">
+ <h5>Registrar Evaluación</h5>
+ <form id="formEvaluacion" class="d-none">
+ @Html.AntiForgeryToken()
+ <input type="hidden" name="MatriculaId" value="" />
+ <div class="mb-3">
+ <label class="form-label">Nota (0-100)</label>
+ <input name="Nota" type="number" step="0.01" min="0" max="100" class="form-control" required />
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Participación</label>
+ <input name="Participacion" type="text" class="form-control" maxlength="50" required />
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Estado</label>
+ <select name="Estado" class="form-select" required>
+ <option value="Aprobado">Aprobado</option>
+ <option value="Reprobado">Reprobado</option>
+ </select>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Observaciones</label>
+ <textarea name="Observaciones" class="form-control" rows="3" maxlength="2000"></textarea>
+ </div>
+ <button class="btn btn-primary" type="submit">Guardar evaluación</button>
+ </form>
+ </div>
+ </div>
+
+ <div class="card" id="matriculaCard">
+ <div class="card-body">
+ <h5>Asignar a Curso (Matricular)</h5>
+ <div id="matriculaDetalle" class="mb-2 text-muted">Seleccione un estudiante para ver opciones</div>
+ <form id="formMatricular" class="d-none">
+ @Html.AntiForgeryToken()
+ <input type="hidden" name="EstudianteId" value="" />
+ <div class="mb-3">
+ <label class="form-label">Curso</label>
+ <select name="CursoId" class="form-select" required></select>
+ </div>
+ <div class="mb-3">
+ <label class="form-label">Cuatrimestre</label>
+ <select name="CuatrimestreId" class="form-select" required></select>
+ </div>
+ <button class="btn btn-success" type="submit">Matricular estudiante</button>
+ </form>
+ </div>
+ </div>
+
+ </div>
+</div>
+@section Scripts{
+ <script src="/js/historial.js"></script>
+}

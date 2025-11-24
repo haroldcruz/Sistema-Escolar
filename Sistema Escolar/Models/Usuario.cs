@@ -4,25 +4,20 @@ using SistemaEscolar.Models.Bitacora;
 
 namespace SistemaEscolar.Models
 {
- // Modelo de usuario del sistema
+ // Modelo de usuario
  public class Usuario
  {
- public int Id { get; set; } // PK
- public required string Nombre { get; set; }
- public required string Apellidos { get; set; }
- public required string Identificacion { get; set; }
- public required string Email { get; set; }
+ public int Id { get; set; }
+ public string Nombre { get; set; } = string.Empty;
+ public string Apellidos { get; set; } = string.Empty;
+ public string Email { get; set; } = string.Empty;
+ public string Identificacion { get; set; } = string.Empty;
+ public byte[] PasswordHash { get; set; } = System.Array.Empty<byte>();
+ public byte[] PasswordSalt { get; set; } = System.Array.Empty<byte>();
+ public bool IsActive { get; set; } = true;
 
- public byte[] PasswordHash { get; set; } = Array.Empty<byte>(); // Hash
- public byte[] PasswordSalt { get; set; } = Array.Empty<byte>(); // Salt
-
- public bool Activo { get; set; }
- public DateTime FechaCreacion { get; set; }
-
- // Relación con roles
- public ICollection<UsuarioRol> UsuarioRoles { get; set; } = new List<UsuarioRol>();
-
- // Relación con bitácora
- public ICollection<BitacoraEntry> Bitacoras { get; set; } = new List<BitacoraEntry>();
+ // Relaciones
+ public List<UsuarioRol> UsuarioRoles { get; set; } = new();
+ public List<Bitacora.BitacoraEntry> Bitacoras { get; set; } = new();
  }
 }

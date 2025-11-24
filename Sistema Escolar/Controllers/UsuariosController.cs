@@ -39,6 +39,7 @@ namespace SistemaEscolar.Controllers
  }
 
  [HttpPost]
+ [ValidateAntiForgeryToken]
  public async Task<IActionResult> Crear(UsuarioCreateDTO dto)
  {
  if (!ModelState.IsValid)
@@ -47,15 +48,41 @@ namespace SistemaEscolar.Controllers
  return View(dto);
  }
 
- var ok = await _usuarios.CreateAsync(dto);
+ try
+ {
+ var (ok, error) = await _usuarios.CreateAsync(dto);
  if (!ok)
  {
- ModelState.AddModelError("", "No se pudo crear");
+ TempData["ToastMessage"] = error ?? "No se pudo crear el usuario. Revise los datos e intente de nuevo.";
+ TempData["ToastType"] = "danger";
  ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
  return View(dto);
  }
 
+ TempData["ToastMessage"] = "Usuario creado correctamente.";
+ TempData["ToastType"] = "success";
  return RedirectToAction("Index");
+ }
+ catch (System.Exception ex)
+ {
+ try
+ {
+ await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
+ {
+ UsuarioId = CurrentUserId(),
+ Accion = "Error crear usuario: " + ex.Message,
+ Modulo = "Seguridad",
+ Ip = Ip()
+ });
+ await _ctx.SaveChangesAsync();
+ }
+ catch { }
+
+ TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
+ TempData["ToastType"] = "danger";
+ ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
+ return View(dto);
+ }
  }
 
  public async Task<IActionResult> Editar(int id)
@@ -82,6 +109,7 @@ namespace SistemaEscolar.Controllers
  }
 
  [HttpPost]
+ [ValidateAntiForgeryToken]
  public async Task<IActionResult> Editar(int id, UsuarioUpdateDTO dto)
  {
  if (id != dto.Id) return BadRequest();
@@ -92,23 +120,80 @@ namespace SistemaEscolar.Controllers
  return View(dto);
  }
 
- var ok = await _usuarios.UpdateAsync(id, dto);
+ try
+ {
+ var (ok, error) = await _usuarios.UpdateAsync(id, dto);
  if (!ok)
  {
- ModelState.AddModelError("", "No se pudo actualizar");
+ TempData["ToastMessage"] = error ?? "No se pudo actualizar el usuario. Revise los datos e intente de nuevo.";
+ TempData["ToastType"] = "danger";
  ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
  return View(dto);
  }
 
+ TempData["ToastMessage"] = "Usuario actualizado correctamente.";
+ TempData["ToastType"] = "success";
  return RedirectToAction("Index");
+ }
+ catch (System.Exception ex)
+ {
+ try
+ {
+ await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
+ {
+ UsuarioId = CurrentUserId(),
+ Accion = "Error actualizar usuario: " + ex.Message,
+ Modulo = "Seguridad",
+ Ip = Ip()
+ });
+ await _ctx.SaveChangesAsync();
+ }
+ catch { }
+
+ TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
+ TempData["ToastType"] = "danger";
+ ViewBag.Roles = _ctx.Roles.OrderBy(r => r.Nombre).ToList();
+ return View(dto);
+ }
  }
 
  [HttpPost]
+ [ValidateAntiForgeryToken]
  public async Task<IActionResult> Eliminar(int id)
  {
- var ok = await _usuarios.DeleteAsync(id);
- if (!ok) return BadRequest();
+ try
+ {
+ var (ok, error) = await _usuarios.DeleteAsync(id);
+ if (!ok)
+ {
+ TempData["ToastMessage"] = error ?? "No se pudo eliminar el usuario.";
+ TempData["ToastType"] = "warning";
  return RedirectToAction("Index");
+ }
+
+ TempData["ToastMessage"] = "Usuario eliminado (desactivado) correctamente.";
+ TempData["ToastType"] = "success";
+ return RedirectToAction("Index");
+ }
+ catch (System.Exception ex)
+ {
+ try
+ {
+ await _ctx.BitacoraEntries.AddAsync(new Models.Bitacora.BitacoraEntry
+ {
+ UsuarioId = CurrentUserId(),
+ Accion = "Error eliminar usuario: " + ex.Message,
+ Modulo = "Seguridad",
+ Ip = Ip()
+ });
+ await _ctx.SaveChangesAsync();
+ }
+ catch { }
+
+ TempData["ToastMessage"] = "Error interno del servidor. Intente de nuevo más tarde.";
+ TempData["ToastType"] = "danger";
+ return RedirectToAction("Index");
+ }
  }
  }
 }

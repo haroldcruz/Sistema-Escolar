@@ -1,0 +1,18 @@
+@model IEnumerable<SistemaEscolar.Models.Permiso>
+@{
+ ViewData["Title"] = "Permisos";
+ Layout = "/Views/Shared/_Layout.cshtml";
+}
+<div class="d-flex justify-content-between mb-2">
+ <h3>Permisos</h3>
+ <div>
+ <a class="btn btn-secondary me-2" href="/Seguridad/Roles">Volver a Roles</a>
+ <a class="btn btn-primary" href="/Seguridad/Permisos/crear">Crear permiso</a>
+ </div>
+</div>
+<table class="table">
+ <thead><tr><th>Código</th><th>Descripción</th><th></th></tr></thead>
+ <tbody>
+ @foreach(var p in Model){ <tr><td>@p.Codigo</td><td>@p.Descripcion</td><td><a class="btn btn-sm btn-secondary" href="/Seguridad/Permisos/editar/@p.Id">Editar</a> <form method="post" action="/Seguridad/Permisos/eliminar/@p.Id" style="display:inline">@Html.AntiForgeryToken()<button class="btn btn-sm btn-danger" type="submit">Eliminar</button></form></td></tr> }
+ </tbody>
+</table>

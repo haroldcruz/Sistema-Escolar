@@ -1,57 +1,53 @@
 @{ ViewBag.Title = "Mi Historial"; Layout = "/Views/Shared/_Layout.cshtml"; }
-<h2>Mi Historial Académico</h2>
-<div class="mb-3 small text-muted">Este historial muestra solo sus evaluaciones. Use filtros para refinar.</div>
-<div class="row g-2 mb-3">
- <div class="col-md-2"><label class="form-label">Desde</label><input type="date" id="desde" class="form-control" /></div>
- <div class="col-md-2"><label class="form-label">Hasta</label><input type="date" id="hasta" class="form-control" /></div>
- <div class="col-md-4"><label class="form-label">Cursos (códigos)</label><input type="text" id="cursos" class="form-control" placeholder="MAT101,INF200" /></div>
- <div class="col-md-2"><button id="btnAplicar" class="btn btn-primary w-100">Aplicar</button></div>
- <div class="col-md-2"><button id="btnLimpiar" class="btn btn-secondary w-100">Limpiar</button></div>
+<div class="p-4">
+    <h3>Mi Historial Académico</h3>
+    <div id="chartContainer">
+        <canvas id="miHistorialChart" width="800" height="400"></canvas>
+    </div>
+    <div class="mt-3">
+        <label>Desde: <input type="date" id="desde" /></label>
+        <label class="ms-2">Hasta: <input type="date" id="hasta" /></label>
+        <button id="btnFiltrar" class="btn btn-primary btn-sm ms-2">Filtrar</button>
+    </div>
 </div>
-<div id="resumen" class="mb-2"></div>
-<div id="contenedorHistorial"></div>
-<div id="graficoWrapper" class="mt-4"></div>
 @section Scripts {
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script>
-(function(){
- const resumen = document.getElementById('resumen');
- const cont = document.getElementById('contenedorHistorial');
- const graficoWrapper = document.getElementById('graficoWrapper');
- document.getElementById('btnAplicar').addEventListener('click', cargar);
- document.getElementById('btnLimpiar').addEventListener('click', ()=>{ desde.value=''; hasta.value=''; cursos.value=''; cargar(); });
- const desde = document.getElementById('desde');
- const hasta = document.getElementById('hasta');
- const cursos = document.getElementById('cursos');
- let autoInterval = null;
- function cargar(){
- cont.innerHTML = '<div class="text-muted">Cargando...</div>';
- const params = new URLSearchParams();
- if(desde.value) params.set('from', desde.value);
- if(hasta.value) params.set('to', hasta.value);
- const listaCursos = cursos.value.split(',').map(c=>c.trim()).filter(c=>c); if(listaCursos.length) listaCursos.forEach(c=> params.append('cursos', c));
- fetch('/api/historial/mio?' + params.toString())
- .then(r=> r.ok? r.json(): Promise.reject(r.status))
- .then(data=> render(data))
- .catch(err=> { cont.innerHTML = '<div class="text-danger">Error '+ err +'</div>'; });
- }
- function render(data){
- if(!data || !data.cuatrimestres || !data.cuatrimestres.length){ cont.innerHTML='<div class="alert alert-warning">Sin datos</div>'; graficoWrapper.innerHTML=''; resumen.innerHTML=''; return; }
- resumen.innerHTML = `<div class='small'>Promedio General: <strong>${data.promedioGeneral?.toFixed(2) ?? 'N/D'}</strong></div>`;
- cont.innerHTML = data.cuatrimestres.map(c=> `<div class='mb-3'><h5>${escapeHtml(c.cuatrimestre)} <span class='badge bg-secondary'>Prom: ${c.promedio?.toFixed(2) ?? 'N/D'}</span></h5><table class='table table-sm table-striped'><thead><tr><th>Curso</th><th>Nota</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${c.cursos.map(it=> `<tr><td>${escapeHtml(it.curso)}</td><td>${it.nota.toFixed(2)}</td><td>${escapeHtml(it.estado)}</td><td>${escapeHtml(it.fecha)}</td></tr>`).join('')}</tbody></table></div>`).join('');
- const labels = data.cuatrimestres.map(x=> x.cuatrimestre); const values = data.cuatrimestres.map(x=> x.promedio ??0);
- graficoWrapper.innerHTML = `<div class='d-flex mb-2'><select id='tipoGrafico' class='form-select form-select-sm me-2' style='width:auto'><option value='bar'>Barras</option><option value='line'>Líneas</option></select><button class='btn btn-sm btn-outline-secondary' id='btnRefrescar'>Refrescar</button><div class='form-check form-switch ms-3'><input class='form-check-input' type='checkbox' id='autoRefresh'><label class='form-check-label small' for='autoRefresh'>Auto</label></div></div><canvas id='grafico' height='140'></canvas>`;
- const ctx = document.getElementById('grafico');
- let chart = buildChart('bar', labels, values, ctx);
- document.getElementById('tipoGrafico').addEventListener('change', e=> { chart.destroy(); chart = buildChart(e.target.value, labels, values, ctx); });
- document.getElementById('btnRefrescar').addEventListener('click', cargar);
- document.getElementById('autoRefresh').addEventListener('change', e=> { if(e.target.checked){ autoInterval = setInterval(cargar,15000); } else { clearInterval(autoInterval); } });
- }
- function buildChart(tipo, labels, values, canvas){
- return new Chart(canvas, { type: tipo, data:{ labels, datasets:[{ label:'Promedio', data: values, borderColor:'#0d6efd', backgroundColor:'rgba(13,110,253,.5)', tension: .25 }] }, options:{ scales:{ y:{ beginAtZero:true } } } });
- }
- function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
- cargar();
- })();
-</script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        (function () {
+            const ctx = document.getElementById('miHistorialChart').getContext('2d');
+            let chart = null;
+            async function cargar(desde, hasta) {
+                let url = '/api/historial/mio';
+                const qs = [];
+                if (desde) qs.push('from=' + encodeURIComponent(desde));
+                if (hasta) qs.push('to=' + encodeURIComponent(hasta));
+                if (qs.length) url += '/filtrado?' + qs.join('&');
+                const r = await fetch(url, { credentials: 'include' });
+                if (!r.ok) { console.error('Error', r.status); return; }
+                const json = await r.json();
+                // json.Cuatrimestres -> [{ Cuatrimestre: "2024-1", Cursos: [{ Curso, Nota, Fecha }], Promedio }]
+                const labels = [];
+                const data = [];
+                (json.cuatrimestres || []).forEach(c => {
+                    labels.push(c.cuatrimestre || c.Cuatrimestre || '');
+                    data.push(c.promedio ?? 0);
+                });
+                if (chart) chart.destroy();
+                chart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{ label: 'Promedio por cuatrimestre', data: data, backgroundColor: 'rgba(54,162,235,0.5)' }]
+                    }
+                });
+            }
+            document.getElementById('btnFiltrar').addEventListener('click', () => {
+                const desde = document.getElementById('desde').value;
+                const hasta = document.getElementById('hasta').value;
+                cargar(desde, hasta);
+            });
+            // carga inicial
+            cargar();
+        })();
+    </script>
 }

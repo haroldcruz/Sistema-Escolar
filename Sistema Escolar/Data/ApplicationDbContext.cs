@@ -25,6 +25,8 @@ namespace SistemaEscolar.Data
         public DbSet<Curso> Cursos { get; set; }
         public DbSet<Cuatrimestre> Cuatrimestres { get; set; }
         public DbSet<CursoDocente> CursoDocentes { get; set; }
+        public DbSet<CursoOferta> CursoOfertas { get; set; }
+        public DbSet<CursoOfertaDocente> CursoOfertaDocentes { get; set; }
         public DbSet<Matricula> Matriculas { get; set; }
         public DbSet<Evaluacion> Evaluaciones { get; set; }
         public DbSet<HorarioCurso> HorariosCurso { get; set; } // agregado
@@ -54,6 +56,30 @@ namespace SistemaEscolar.Data
                 .HasOne(ur => ur.Rol)
                 .WithMany(r => r.UsuarioRoles)
                 .HasForeignKey(ur => ur.RolId);
+
+            // CursoOferta — PK autogenerada
+            modelBuilder.Entity<CursoOferta>()
+                .HasOne(co => co.Curso)
+                .WithMany()
+                .HasForeignKey(co => co.CursoId);
+
+            modelBuilder.Entity<CursoOferta>()
+                .HasOne(co => co.Cuatrimestre)
+                .WithMany()
+                .HasForeignKey(co => co.CuatrimestreId);
+
+            modelBuilder.Entity<CursoOfertaDocente>()
+                .HasKey(cod => new { cod.CursoOfertaId, cod.DocenteId });
+
+            modelBuilder.Entity<CursoOfertaDocente>()
+                .HasOne(cod => cod.CursoOferta)
+                .WithMany(co => co.CursoOfertaDocentes)
+                .HasForeignKey(cod => cod.CursoOfertaId);
+
+            modelBuilder.Entity<CursoOfertaDocente>()
+                .HasOne(cod => cod.Docente)
+                .WithMany()
+                .HasForeignKey(cod => cod.DocenteId);
 
             // RolPermiso — PK compuesta
             modelBuilder.Entity<RolPermiso>()
@@ -114,6 +140,7 @@ namespace SistemaEscolar.Data
                 .HasForeignKey(m => m.EstudianteId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+            // Nota: Matricula ahora referencia CursoOfertaId; mantener FK a Curso y Cuatrimestre opcional para compatibilidad
             modelBuilder.Entity<Matricula>()
                 .HasOne(m => m.Curso)
                 .WithMany(c => c.Matriculas)

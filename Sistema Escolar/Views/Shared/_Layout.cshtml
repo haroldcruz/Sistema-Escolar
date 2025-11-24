@@ -9,7 +9,11 @@
 </head>
 @{
  var roles = string.Join(',', User?.Claims.Where(c=>c.Type==System.Security.Claims.ClaimTypes.Role).Select(c=>c.Value) ?? new string[0]);
- var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+ // Use null-conditional on User to avoid possible NullReferenceException when User is null
+ var userId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
+ // Toast message from TempData or ViewBag
+ var toastMsg = (TempData["ToastMessage"] as string) ?? (ViewBag.ToastMessage as string) ?? string.Empty;
+ var toastType = (TempData["ToastType"] as string) ?? (ViewBag.ToastType as string) ?? "info";
 }
 <body data-user-id="@userId" data-user-role="@roles">
  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
@@ -22,18 +26,26 @@
  <ul class="navbar-nav me-auto mb-2 mb-lg-0">
  @if (User?.Identity?.IsAuthenticated ?? false)
  {
- if (User.HasClaim("permiso","Cursos.Ver")) { <li class="nav-item"><a class="nav-link" asp-controller="Cursos" asp-action="Index">Cursos</a></li> }
+ // Show Cursos if user has permiso or is Administrator
+ if (User.HasClaim("permiso","Cursos.Ver") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" asp-controller="Cursos" asp-action="Index">Cursos</a></li> }
  // Módulo separado para asignar docentes (no reutiliza listado de cursos)
- if (User.HasClaim("permiso","Cursos.AsignarDocente")) { <li class="nav-item"><a class="nav-link" href="/Docentes">Asignar Docentes</a></li> }
- if (User.HasClaim("permiso","Usuarios.Gestion")) { <li class="nav-item"><a class="nav-link" href="/Usuarios">Usuarios</a></li> }
- if (User.HasClaim("permiso","Seguridad.Gestion")) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
- if (User.HasClaim("permiso","Bitacora.Ver")) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }
+ if (User.HasClaim("permiso","Cursos.AsignarDocente") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Docentes">Asignar Docentes</a></li> }
+ // Usuarios: permitir ver si tiene permiso o es Administrador
+ if (User.HasClaim("permiso","Usuarios.Gestion") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Usuarios">Usuarios</a></li> }
+ // Roles / Seguridad: mostrar si tiene el permiso de seguridad o es Administrador
+ if (User.HasClaim("permiso","Seguridad.Gestion") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
+ // Bitácora: mostrar si tiene permiso o es Administrador
+ if (User.HasClaim("permiso","Bitacora.Ver") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }
+ // Enlace al módulo Evaluaciones visible sólo si el usuario tiene el permiso Evaluaciones.Crear or is Admin
+ if (User.HasClaim("permiso","Evaluaciones.Crear") || User.IsInRole("Administrador")) { <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li> }
  // Links relevantes para Docente
  if (User.IsInRole("Docente")) {
  <li class="nav-item"><a class="nav-link" href="/Cursos">Mis Cursos</a></li>
  <li class="nav-item"><a class="nav-link" href="/Historial">Historial</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Historial/BuscarEvaluacion">Buscar y Evaluar</a></li>
  }
  if (User.IsInRole("Estudiante")) { <li class="nav-item"><a class="nav-link" href="/MiHistorial">Mi Historial</a></li> }
+ }
  }
  </ul>
  <ul class="navbar-nav ms-auto">
@@ -53,6 +65,19 @@
  <main class="container">
  @RenderBody()
  </main>
+
+ <!-- Toast container -->
+ <div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index:1080;">
+ <div id="appToast" class="toast align-items-center text-bg-@toastType border-0" role="alert" aria-live="assertive" aria-atomic="true">
+ <div class="d-flex">
+ <div class="toast-body">
+ @toastMsg
+ </div>
+ <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+ </div>
+ </div>
+ </div>
+
  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
  <script>if(!window.jQuery){document.write('<script src="/lib/jquery/jquery-3.6.0.min.js"><\\/script>');}</script>
  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -60,6 +85,16 @@
  <script>if(!window.jQuery.validator){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"><\\/script>');}</script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
  <script src="/js/site.js"></script>
+ <script>
+ document.addEventListener('DOMContentLoaded', function(){
+ var toastEl = document.getElementById('appToast');
+ if (!toastEl) return;
+ var msg = '@(toastMsg.Replace("'","\'"))';
+ if (!msg) return; // no mostrar si no hay mensaje
+ var toast = new bootstrap.Toast(toastEl, { delay:5000 });
+ toast.show();
+ });
+ </script>
  @RenderSection("Scripts", required: false)
 </body>
 </html>

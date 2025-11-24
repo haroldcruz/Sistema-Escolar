@@ -8,24 +8,24 @@ namespace SistemaEscolar.Data
  {
  // Parche idempotente para ajustar esquema existente de dbo.Cursos
  var sql = @"
-/* Asegurar columnas de auditoría */
-IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
+ /* Asegurar columnas de auditoría */
+ IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [CreadoPorId] INT NULL;
-IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
+ IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [FechaCreacion] DATETIME2 NOT NULL CONSTRAINT DF_Cursos_FechaCreacion DEFAULT (SYSUTCDATETIME());
-IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
+ IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [ModificadoPorId] INT NULL;
-IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
+ IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
  ALTER TABLE [dbo].[Cursos] ADD [FechaModificacion] DATETIME2 NULL;
 
-/* Normalizar tipo y longitud de Codigo para poder indexar */
-DECLARE @data_type sysname, @maxlen int;
-SELECT @data_type = DATA_TYPE, @maxlen = CHARACTER_MAXIMUM_LENGTH
+ /* Normalizar tipo y longitud de Codigo para poder indexar */
+ DECLARE @data_type sysname, @maxlen int;
+ SELECT @data_type = DATA_TYPE, @maxlen = CHARACTER_MAXIMUM_LENGTH
  FROM INFORMATION_SCHEMA.COLUMNS
  WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'Cursos' AND COLUMN_NAME = 'Codigo';
 
-IF @data_type IS NOT NULL
-BEGIN
+ IF @data_type IS NOT NULL
+ BEGIN
  -- Si es text/ntext o un tipo no (n)varchar, migrar a NVARCHAR(50) usando columna temporal
  IF @data_type IN ('text','ntext') OR (@data_type NOT IN ('varchar','nvarchar'))
  BEGIN
@@ -41,39 +41,42 @@ BEGIN
  BEGIN
  ALTER TABLE dbo.Cursos ALTER COLUMN Codigo NVARCHAR(50) NULL;
  END
-END
+ END
 
-/* Sincronizar columna legada UsuarioCreacion con nueva CreadoPorId */
-IF COL_LENGTH('dbo.Cursos','UsuarioCreacion') IS NOT NULL
-BEGIN
- UPDATE C SET CreadoPorId = ISNULL(CreadoPorId, UsuarioCreacion) FROM dbo.Cursos AS C;
- BEGIN TRY ALTER TABLE dbo.Cursos ALTER COLUMN UsuarioCreacion INT NULL; END TRY BEGIN CATCH END CATCH;
-END
+ /* Sincronizar columna legada UsuarioCreacion con nueva CreadoPorId */
+ -- Use dynamic SQL to reference UsuarioCreacion only if it exists to avoid compile-time errors
+ IF COL_LENGTH('dbo.Cursos','UsuarioCreacion') IS NOT NULL
+ BEGIN
+ EXEC('UPDATE C SET CreadoPorId = ISNULL(CreadoPorId, UsuarioCreacion) FROM dbo.Cursos AS C');
+ BEGIN TRY
+ EXEC('ALTER TABLE dbo.Cursos ALTER COLUMN UsuarioCreacion INT NULL');
+ END TRY BEGIN CATCH END CATCH;
+ END
 
-/* Asegurar NOT NULL en Codigo para consistencia con el modelo */
-UPDATE dbo.Cursos SET Codigo = '' WHERE Codigo IS NULL;
-BEGIN TRY
+ /* Asegurar NOT NULL en Codigo para consistencia con el modelo */
+ UPDATE dbo.Cursos SET Codigo = '' WHERE Codigo IS NULL;
+ BEGIN TRY
  ALTER TABLE dbo.Cursos ALTER COLUMN Codigo NVARCHAR(50) NOT NULL;
-END TRY BEGIN CATCH END CATCH;
+ END TRY BEGIN CATCH END CATCH;
 
-/* Crear índice único si no existe */
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Cursos_Codigo' AND object_id = OBJECT_ID('dbo.Cursos'))
+ /* Crear índice único si no existe */
+ IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'IX_Cursos_Codigo' AND object_id = OBJECT_ID('dbo.Cursos'))
  CREATE UNIQUE INDEX [IX_Cursos_Codigo] ON [dbo].[Cursos]([Codigo]);
 
-/* Agregar FK CreadoPorId si no existe */
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_CreadoPorId') AND COL_LENGTH('dbo.Cursos','CreadoPorId') IS NOT NULL
+ /* Agregar FK CreadoPorId si no existe */
+ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_CreadoPorId') AND COL_LENGTH('dbo.Cursos','CreadoPorId') IS NOT NULL
  ALTER TABLE [dbo].[Cursos] WITH CHECK ADD CONSTRAINT [FK_Cursos_Usuarios_CreadoPorId] FOREIGN KEY([CreadoPorId]) REFERENCES [dbo].[Usuarios] ([Id]);
-/* Agregar FK ModificadoPorId si no existe */
-IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_ModificadoPorId') AND COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NOT NULL
+ /* Agregar FK ModificadoPorId si no existe */
+ IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = 'FK_Cursos_Usuarios_ModificadoPorId') AND COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NOT NULL
  ALTER TABLE [dbo].[Cursos] WITH CHECK ADD CONSTRAINT [FK_Cursos_Usuarios_ModificadoPorId] FOREIGN KEY([ModificadoPorId]) REFERENCES [dbo].[Usuarios] ([Id]);
 
-/* ==============================
-PARCHE NUEVO: CREAR TABLA dbo.HorariosCurso
-============================== */
+ /* ==============================
+ PARCHE NUEVO: CREAR TABLA dbo.HorariosCurso
+ ============================== */
 
-/* Crear tabla HorariosCurso si no existe */
-IF OBJECT_ID('dbo.HorariosCurso','U') IS NULL
-BEGIN
+ /* Crear tabla HorariosCurso si no existe */
+ IF OBJECT_ID('dbo.HorariosCurso','U') IS NULL
+ BEGIN
  CREATE TABLE dbo.HorariosCurso(
  Id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
  CursoId INT NOT NULL,
@@ -83,8 +86,8 @@ BEGIN
  );
  ALTER TABLE dbo.HorariosCurso ADD CONSTRAINT FK_HorariosCurso_Cursos FOREIGN KEY (CursoId) REFERENCES dbo.Cursos(Id) ON DELETE CASCADE;
  CREATE UNIQUE INDEX UX_HorariosCurso_Curso_Dia_Inicio ON dbo.HorariosCurso(CursoId, DiaSemana, HoraInicio);
-END
-";
+ END
+ ";
  ctx.Database.ExecuteSqlRaw(sql);
  
  try
@@ -94,32 +97,32 @@ END
 
  // Add 'Numero' column to Cuatrimestres if missing
  var sqlAddNumero = @"
-IF COL_LENGTH('dbo.Cuatrimestres','Numero') IS NULL
-BEGIN
+ IF COL_LENGTH('dbo.Cuatrimestres','Numero') IS NULL
+ BEGIN
  ALTER TABLE dbo.Cuatrimestres ADD Numero int NOT NULL CONSTRAINT DF_Cuatrimestres_Numero DEFAULT(0);
-END
-";
+ END
+ ";
  ctx.Database.ExecuteSqlRaw(sqlAddNumero);
 
  // Ensure Curso audit columns exist (CreadoPorId, FechaCreacion, ModificadoPorId, FechaModificacion)
  var sqlAddCursoCols = @"
-IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
-BEGIN
+ IF COL_LENGTH('dbo.Cursos','CreadoPorId') IS NULL
+ BEGIN
  ALTER TABLE dbo.Cursos ADD CreadoPorId int NULL;
-END
-IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
-BEGIN
+ END
+ IF COL_LENGTH('dbo.Cursos','FechaCreacion') IS NULL
+ BEGIN
  ALTER TABLE dbo.Cursos ADD FechaCreacion datetime2 NULL;
-END
-IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
-BEGIN
+ END
+ IF COL_LENGTH('dbo.Cursos','ModificadoPorId') IS NULL
+ BEGIN
  ALTER TABLE dbo.Cursos ADD ModificadoPorId int NULL;
-END
-IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
-BEGIN
+ END
+ IF COL_LENGTH('dbo.Cursos','FechaModificacion') IS NULL
+ BEGIN
  ALTER TABLE dbo.Cursos ADD FechaModificacion datetime2 NULL;
-END
-";
+ END
+ ";
  ctx.Database.ExecuteSqlRaw(sqlAddCursoCols);
  }
  catch

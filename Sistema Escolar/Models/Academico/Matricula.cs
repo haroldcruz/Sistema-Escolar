@@ -3,23 +3,27 @@ using System.Collections.Generic;
 
 namespace SistemaEscolar.Models.Academico
 {
- // Matrícula del estudiante en un curso
  public class Matricula
  {
- public int Id { get; set; } // PK
+ public int Id { get; set; }
 
- // IDs y navegación ahora opcionales (nullable) según requerimiento
- public int? EstudianteId { get; set; }
- public Usuario? Estudiante { get; set; } // Usa Usuario como estudiante
+ // Oferta/grupo (nueva)
+ public int? CursoOfertaId { get; set; }
 
- public int? CursoId { get; set; }
- public Curso? Curso { get; set; }
+ // Compatibilidad: referencia directa a Curso y Cuatrimestre
+ public int CursoId { get; set; }
+ public int CuatrimestreId { get; set; }
 
- public int? CuatrimestreId { get; set; }
- public Cuatrimestre? Cuatrimestre { get; set; }
-
+ public int EstudianteId { get; set; }
  public DateTime FechaMatricula { get; set; }
+ public bool Activo { get; set; } = true;
 
- public ICollection<Evaluacion> Evaluaciones { get; set; } = new List<Evaluacion>();
+ // Navegaciones
+ public Curso? Curso { get; set; }
+ public Cuatrimestre? Cuatrimestre { get; set; }
+ public CursoOferta? CursoOferta { get; set; }
+ public SistemaEscolar.Models.Usuario? Estudiante { get; set; }
+
+ public List<Evaluacion>? Evaluaciones { get; set; }
  }
 }

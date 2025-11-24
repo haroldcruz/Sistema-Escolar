@@ -1,40 +1,44 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SistemaEscolar.Interfaces.Historial;
-using System.Threading.Tasks;
-using System;
-using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System;
 
 namespace SistemaEscolar.Controllers.API
 {
- [Route("api/historial")] // Ruta fija para que sea /api/historial
  [ApiController]
+ [Route("api/historial")]
+ [Authorize]
  public class HistorialApiController : ControllerBase
  {
  private readonly IHistorialService _historial;
+ public HistorialApiController(IHistorialService historial) { _historial = historial; }
 
- public HistorialApiController(IHistorialService historial){ _historial = historial; }
+ private int CurrentUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "0");
 
- // Búsqueda para personal autorizado
- [HttpGet("buscar")]
- [Authorize(Roles="Docente,Coordinador,Administrador")]
- public async Task<IActionResult> Buscar([FromQuery] string term){ var res = await _historial.BuscarEstudiantesAsync(term); return Ok(res.Select(x=> new { id=x.Id, nombreCompleto=x.NombreCompleto, identificacion=x.Identificacion, email=x.Email })); }
-
- // Historial por estudiante (staff)
- [HttpGet("{id:int}/agrupado")]
- [Authorize(Roles="Docente,Coordinador,Administrador")]
- public async Task<IActionResult> Agrupado(int id, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string[]? cursos){ var dto = await _historial.GetHistorialAgrupadoFiltradoAsync(id, from, to, cursos); return Ok(dto); }
-
- // NUEVO: historial propio (estudiante)
+ // GET api/historial/mio
  [HttpGet("mio")]
- [Authorize(Roles="Estudiante")]
- public async Task<IActionResult> MiHistorial([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string[]? cursos)
+ [Authorize(Roles = "Estudiante")]
+ public async Task<IActionResult> GetMiHistorial()
  {
- var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
- if (string.IsNullOrEmpty(idStr)) return Unauthorized();
- if(!int.TryParse(idStr, out var id)) return Unauthorized();
- var dto = await _historial.GetHistorialAgrupadoFiltradoAsync(id, from, to, cursos);
+ var uid = CurrentUserId();
+ if (uid ==0) return Unauthorized();
+ var dto = await _historial.GetHistorialAgrupadoAsync(uid);
+ return Ok(dto);
+ }
+
+ // GET api/historial/mio/filtrado?from=2025-01-01&to=2025-12-31
+ [HttpGet("mio/filtrado")]
+ [Authorize(Roles = "Estudiante")]
+ public async Task<IActionResult> GetMiHistorialFiltrado([FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? cursos)
+ {
+ var uid = CurrentUserId();
+ if (uid ==0) return Unauthorized();
+ IEnumerable<string>? cursosList = null;
+ if (!string.IsNullOrWhiteSpace(cursos)) cursosList = cursos.Split(',');
+ var dto = await _historial.GetHistorialAgrupadoFiltradoAsync(uid, from, to, cursosList);
  return Ok(dto);
  }
  }

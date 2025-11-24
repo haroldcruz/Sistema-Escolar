@@ -17,15 +17,27 @@ using SistemaEscolar.Services.Historial;
 using SistemaEscolar.Services.Usuarios;
 using System.Text;
 using System.Security.Cryptography;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // DB
+var isDev = builder.Environment.IsDevelopment();
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
- opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+ opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+ // Do not enable sensitive data logging or verbose SQL console output by default to avoid slowdowns
+ // and privacy warnings. If you need SQL logs temporarily enable them via configuration.
+ if (isDev)
+ {
+ // Optionally enable detailed errors (does not log SQL)
+ opt.EnableDetailedErrors();
+ }
+});
 
 // JWT settings
-var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<SistemaEscolar.Models.Auth.JwtSettings>() ?? new SistemaEscolar.Models.Auth.JwtSettings
 {
  Secret = "DEV_SUPER_LONG_SECRET_KEY_CHANGE_ME__1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".PadRight(64,'X'),
  Issuer = "SistemaEscolar",
@@ -37,6 +49,10 @@ if(string.IsNullOrWhiteSpace(jwtSettings.Secret) || Encoding.UTF8.GetBytes(jwtSe
  jwtSettings.Secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 }
 builder.Services.AddSingleton(jwtSettings);
+
+// Lockout settings (Security:Lockout) - bind config if present
+var lockoutSettings = builder.Configuration.GetSection("Security:Lockout").Get<SistemaEscolar.Models.Security.LockoutSettings>() ?? new SistemaEscolar.Models.Security.LockoutSettings();
+builder.Services.AddSingleton(lockoutSettings);
 
 // DI services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -62,6 +78,8 @@ builder.Services.AddAuthentication(options =>
  opt.LogoutPath = "/Auth/Logout";
  opt.AccessDeniedPath = "/Auth/AccessDenied"; // ruta existente
  opt.Cookie.Name = "app_auth";
+ // secure policy default (SameAsRequest) - can be tightened in production
+ opt.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 })
 .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
 {
@@ -91,7 +109,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(opts =>
 {
  string[] permisos = new[] {
- "Usuarios.Gestion","Cursos.Ver","Cursos.Crear","Cursos.Editar","Cursos.Eliminar","Cursos.AsignarDocente","Historial.Ver","Bitacora.Ver","Seguridad.Gestion"
+ "Usuarios.Gestion","Cursos.Ver","Cursos.Crear","Cursos.Editar","Cursos.Eliminar","Cursos.AsignarDocente","Historial.Ver","Bitacora.Ver","Seguridad.Gestion","Evaluaciones.Crear"
  };
  foreach (var p in permisos)
  opts.AddPolicy(p, pol => pol.RequireClaim("permiso", p));
@@ -101,13 +119,22 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Patch DB columns if needed
+// On startup: do not reset database. Only ensure it exists and apply DB patcher if available.
 using (var scope = app.Services.CreateScope())
 {
  var ctx = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+ try
+ {
+ // Ensure DB created but do not delete existing data
  ctx.Database.EnsureCreated();
- DbPatcher.Apply(ctx); // asegura columnas CreadoPorId/FechaCreacion e índice
- DataSeeder.Seed(ctx);
+ DbPatcher.Apply(ctx); // aplica cambios no destructivos
+ // No DataSeeder.Seed to avoid reseeding on each start
+ }
+ catch (Exception ex)
+ {
+ var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+ logger.LogError(ex, "Error al inicializar la base de datos");
+ }
 }
 
 app.UseMiddleware<ErrorHandlerMiddleware>();

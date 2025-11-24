@@ -78,5 +78,12 @@ namespace SistemaEscolar.Controllers.API
  if (!ok) return BadRequest(new { message = "No se pudo eliminar" });
  return Ok(new { message = "Eliminado" });
  }
+
+ // Nuevo endpoint para obtener ofertas por curso
+ [HttpGet("{cursoId}/ofertas")]
+ public async Task<IActionResult> GetOfertas(int cursoId){
+ var ofertas = await _ctx.CursoOfertas.Where(co=> co.CursoId==cursoId).Select(co => new { id = co.Id, nombre = co.NombreGrupo, cuatrimestreId = co.CuatrimestreId, cursoId = co.CursoId }).ToListAsync();
+ return Ok(ofertas);
+ }
  }
 }

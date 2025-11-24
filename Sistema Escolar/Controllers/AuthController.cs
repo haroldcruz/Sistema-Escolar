@@ -11,6 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
+using System;
 
 namespace SistemaEscolar.Controllers
 {
@@ -37,7 +39,8 @@ namespace SistemaEscolar.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(LoginRequest req)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Login([FromForm] SistemaEscolar.DTOs.Auth.LoginRequest req)
         {
             if (!ModelState.IsValid)
             {
@@ -76,14 +79,23 @@ namespace SistemaEscolar.Controllers
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
-            // Guardar JWT para APIs
+            // Use explicit authentication properties so cookie is created and persisted
+            var authProps = new AuthenticationProperties
+            {
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddHours(8),
+                AllowRefresh = true
+            };
+
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+            // Guardar JWT para APIs - use SameSite=Lax for dev to allow cross-port requests
             Response.Cookies.Append("jwt", resp.Token, new Microsoft.AspNetCore.Http.CookieOptions
             {
                 HttpOnly = true,
                 Secure = Request.IsHttps,
-                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Strict,
+                SameSite = Microsoft.AspNetCore.Http.SameSiteMode.Lax,
                 Path = "/"
             });
 
