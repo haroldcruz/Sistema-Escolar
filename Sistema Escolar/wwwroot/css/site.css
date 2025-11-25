@@ -1,24 +1,28 @@
+/* Site global styles - corrected and validated */
 html {
-  font-size: 14px;
+ font-size:14px;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+@media (min-width:768px) {
+ html { font-size:16px; }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
+ /* focus ring: white inner + blue outer */
+ box-shadow:0 0.1rem rgba(255,255,255,1),0 0.25rem #258cfb;
 }
 
 html {
-  position: relative;
-  min-height: 100%;
+ position: relative;
+ min-height:100%;
 }
 
 body {
-  margin-bottom: 60px;
+ margin-bottom:60px;
 }
 
 /* Responsive tweaks for Sistema Escolar */
@@ -27,39 +31,97 @@ body {
 }
 
 /* Ensure container uses full width on mobile and comfortable margins on desktop */
-main.container-fluid{ padding-left: .5rem; padding-right: .5rem; }
+main.container-fluid { padding-left: .5rem; padding-right: .5rem; }
 
 /* constrain app content on large screens for better UX */
-.app-main{ max-width:1200px; margin:0 auto; }
+.app-main { max-width:1200px; margin:0 auto; }
 
 /* Buttons full width on small devices */
-@media (max-width:767.98px){
+@media (max-width:767.98px) {
  .row.g-3 .col-sm-6 { flex:00100%; max-width:100%; }
- .btn.w-100, .btn.w-100 { width:100% !important; }
+ .btn.w-100 { width:100% !important; }
  .card.p-3 { padding: var(--card-padding); }
  .navbar .navbar-brand { font-size:1rem; }
 }
 
 /* Tables responsive wrapper */
-.table-responsive { overflow-x:auto; -webkit-overflow-scrolling: touch; }
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* Make charts resize nicely */
-.canvas-container{ position: relative; width:100%; height:300px; }
-@media (max-width:767.98px){
- .canvas-container{ height:220px; }
-}
+.canvas-container { position: relative; width:100%; height:300px; }
+@media (max-width:767.98px) { .canvas-container { height:220px; } }
 
 /* Small adjustments for cards in statistics and historial */
-.card.p-3 h5{ font-size:1rem; margin-bottom: .5rem; }
+.card.p-3 h5 { font-size:1rem; margin-bottom: .5rem; }
 
 /* Accessibility: increase tap target for links/buttons */
 a.btn, .nav-link { padding: .5rem .75rem; }
 
 /* Form required field indicator */
-label.required:after{ content: " *"; color: #dc3545; }
+label.required:after { content: " *"; color: #dc3545; }
 
 /* Toast stacking on small screens */
-@media (max-width:576px){
- .position-fixed.top-0.end-0.p-3{ right: .5rem; left: .5rem; }
- .toast{ width: auto; }
+@media (max-width:576px) {
+ .position-fixed.top-0.end-0.p-3 { right: .5rem; left: .5rem; }
+ .toast { width: auto; }
 }
+
+/* Layout helper classes */
+.layout-main { display: block; }
+.layout-centered { display: flex; align-items: center; justify-content: center; }
+.layout-login { min-height: calc(100vh -56px); /* space for navbar */ display: flex; align-items: center; justify-content: center; }
+.index-hero { padding:2rem; }
+
+/* ==========================================
+ Login centering and card shadow
+ Usage in Razor page:
+ - In _Layout.cshtml: add a wrapper class to the main when rendering login: <main class="container-lg app-main layout-login">@RenderBody()</main>
+ - Or in the Login partial: wrap with <main class="login-page"><div class="login-card card">...</div></main>
+ ========================================== */
+
+.login-page {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ padding:2.5rem 1rem;
+ min-height: calc(100vh -120px); /* leave room for navbar */
+ background: linear-gradient(180deg, rgba(247,251,255,0.6), rgba(255,255,255,0.6));
+}
+
+.login-card {
+ width:100%;
+ max-width:420px;
+ padding:1.6rem;
+ border-radius: .75rem;
+ background: #ffffff;
+ box-shadow: 0px 10px 30px rgba(2,6,23,0.08), 0px 4px 10px rgba(2,6,23,0.04);
+ border:1px solid rgba(16,24,40,0.04);
+ transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.login-card:hover {
+ transform: translateY(-6px);
+ box-shadow: 0px 20px 40px rgba(2,6,23,0.12), 0px 6px 18px rgba(2,6,23,0.06);
+}
+
+.login-card .card-title,
+.login-card h5 {
+ margin-bottom: .5rem;
+ font-weight:600;
+ color: #0b2236;
+}
+
+.login-card .form-control { border-radius: .45rem; }
+
+.login-card .btn-primary {
+ border-radius: .5rem;
+ box-shadow: 0px 8px 20px rgba(37,140,251,0.18);
+ transition: box-shadow .15s ease, transform .12s ease;
+}
+
+.login-card .btn-primary:active {
+ transform: translateY(1px);
+ box-shadow: 0px 6px 14px rgba(37,140,251,0.14);
+}
+
+@media (max-width:420px) { .login-card { padding:1rem; margin: .5rem; } }

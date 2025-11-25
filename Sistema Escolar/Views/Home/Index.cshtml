@@ -18,13 +18,13 @@
  var isCoordinador = User?.IsInRole("Coordinador") == true;
  var isEstudiante = User?.IsInRole("Estudiante") == true;
 }
+
 <div class="p-5 bg-light rounded-3">
  @if (isAuth)
  {
  <h1 class="display-5">Bienvenido @nombre</h1>
  <p class="lead">Este es su Sistema de Gestión Escolar.</p>
  <hr />
- @* Docente: mostrar sólo las acciones relevantes *@
  @if (isDocente)
  {
  <div class="row g-3 mt-2 justify-content-center">
@@ -45,65 +45,79 @@
  {
  <h5>Accesos rápidos</h5>
  <div class="row g-3 mt-2">
- @* Cursos: mostrar sólo para Docente, Administrador o usuarios con permiso, pero no a Estudiantes *@
+ @* Standardized quick access cards: each item occupies same grid and style *@
  @if ((isDocente || User.HasClaim("permiso","Cursos.Ver") || isAdmin) && !isEstudiante)
  {
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-primary w-100" href="/Cursos">Cursos</a>
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Cursos</h6>
+ <a class="btn btn-outline-primary w-100" href="/Cursos">Ir a Cursos</a>
+ </div>
  </div>
  }
- @* Historial: docentes/coordinadores/admin ven el módulo general; estudiantes ven "Mi Historial" *@
  @if (isDocente || isCoordinador || isAdmin)
  {
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-secondary w-100" href="/Historial">Historial Académico</a>
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Historial</h6>
+ <a class="btn btn-outline-secondary w-100" href="/Historial">Ver Historial</a>
+ </div>
  </div>
  }
  else if (isEstudiante)
  {
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-secondary w-100" href="/MiHistorial">Mi Historial</a>
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Mi Historial</h6>
+ <a class="btn btn-outline-secondary w-100" href="/MiHistorial">Ver mi historial</a>
+ </div>
  </div>
  }
- @* Usuarios (gestion) *@
  @if (User?.HasClaim("permiso","Usuarios.Gestion") ?? false)
  {
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-success w-100" href="/Usuarios">Usuarios</a>
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Usuarios</h6>
+ <a class="btn btn-outline-success w-100" href="/Usuarios">Gestionar Usuarios</a>
+ </div>
  </div>
  }
- @* Bitácora *@
  @if (User?.HasClaim("permiso","Bitacora.Ver") ?? false)
  {
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-dark w-100" href="/Bitacora">Bitácora</a>
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Bitácora</h6>
+ <a class="btn btn-outline-dark w-100" href="/Bitacora">Ver Bitácora</a>
+ </div>
  </div>
  }
- @* Estadísticas: Docente, Coordinador, Administrador *@
+ @* Estadísticas and Matriculación keep description but with consistent card layout *@
  @if (isDocente || isCoordinador || isAdmin)
  {
- <div class="col-md-3">
- <div class="card p-3">
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3">
  <h5>Estadísticas</h5>
- <p>Ver estadísticas por curso y cuatrimestre</p>
- <a class="btn btn-sm btn-primary" href="/Estadisticas">Ir a Estadísticas</a>
+ <p class="small text-muted">Ver estadísticas por curso y cuatrimestre</p>
+ <a class="btn btn-sm btn-primary w-100" href="/Estadisticas">Ir a Estadísticas</a>
  </div>
  </div>
  }
- @* Matriculación: solo admin o usuario con permiso Cursos.Crear *@
  @if (User.HasClaim("permiso","Cursos.Crear") || isAdmin)
  {
- <div class="col-md-3">
- <div class="card p-3">
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3">
  <h5>Matriculación</h5>
- <p>Matricular estudiantes</p>
- <a class="btn btn-sm btn-primary" href="/Matriculas/Crear">Matricular</a>
+ <p class="small text-muted">Matricular estudiantes</p>
+ <a class="btn btn-sm btn-primary w-100" href="/Matriculas/Crear">Matricular</a>
  </div>
  </div>
  }
- @* Enlace editar perfil (siempre visible para autenticados) *@
- <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-secondary w-100" href="/Usuarios/Editar/@userId">Mi Perfil</a>
+ @* Always show edit profile as a quick card *@
+ <div class="col-6 col-md-3">
+ <div class="card h-100 p-3 text-center">
+ <h6 class="mb-3">Mi Perfil</h6>
+ <a class="btn btn-outline-secondary w-100" href="/Usuarios/Editar/@userId">Editar Perfil</a>
+ </div>
  </div>
  </div>
  }

@@ -26,6 +26,12 @@
  bool canAsignarDocente = User?.HasClaim("permiso", "Cursos.AsignarDocente") == true;
  bool canEvaluacionesCrear = User?.HasClaim("permiso", "Evaluaciones.Crear") == true;
  bool canSeguridad = User?.HasClaim("permiso", "Seguridad.Gestion") == true;
+
+ // Allow pages to request a specific layout class via ViewBag.LayoutClass
+ var layoutClass = ViewBag.LayoutClass as string ?? string.Empty;
+ // Auto-apply layout-login when current request is the login route
+ var isLoginRoute = Context.Request.Path.StartsWithSegments("/Auth/Login", StringComparison.OrdinalIgnoreCase) || Context.Request.Path.Equals("/Auth/Login", StringComparison.OrdinalIgnoreCase);
+ if (isLoginRoute && string.IsNullOrEmpty(layoutClass)) { layoutClass = "layout-login"; }
 }
 <body data-user-id="@userId" data-user-role="@roles">
  <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3" aria-label="Main navigation">
@@ -121,7 +127,7 @@
  </div>
  </nav>
 
- <main class="container-lg app-main px-2">
+ <main class="container-lg app-main px-2 @(layoutClass)">
  @RenderBody()
  </main>
 
