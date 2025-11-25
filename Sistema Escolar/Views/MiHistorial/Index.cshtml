@@ -1,53 +1,155 @@
 @{ ViewBag.Title = "Mi Historial"; Layout = "/Views/Shared/_Layout.cshtml"; }
 <div class="p-4">
-    <h3>Mi Historial Académico</h3>
-    <div id="chartContainer">
-        <canvas id="miHistorialChart" width="800" height="400"></canvas>
-    </div>
-    <div class="mt-3">
-        <label>Desde: <input type="date" id="desde" /></label>
-        <label class="ms-2">Hasta: <input type="date" id="hasta" /></label>
-        <button id="btnFiltrar" class="btn btn-primary btn-sm ms-2">Filtrar</button>
-    </div>
+ <h3>Mi Historial Académico</h3>
+ <div class="row g-3 mb-2 align-items-end">
+ <div class="col-auto">
+ <label>Curso</label>
+ <select id="filtroCurso" class="form-select">
+ <option value="">Todos</option>
+ </select>
+ </div>
+ <div class="col-auto">
+ <label>Desde</label>
+ <input type="date" id="desde" class="form-control" />
+ </div>
+ <div class="col-auto">
+ <label>Hasta</label>
+ <input type="date" id="hasta" class="form-control" />
+ </div>
+ <div class="col-auto">
+ <label>Tipo gráfico</label>
+ <select id="tipoGrafico" class="form-select">
+ <option value="bar">Barras</option>
+ <option value="line">Línea</option>
+ </select>
+ </div>
+ <div class="col-auto d-flex">
+ <button id="btnFiltrar" class="btn btn-primary btn-sm ms-2 align-self-end">Filtrar</button>
+ <button id="btnLimpiar" class="btn btn-secondary btn-sm ms-2 align-self-end">Limpiar</button>
+ </div>
+ </div>
+
+ <div id="chartContainer" class="card p-3 mb-3">
+ <canvas id="miHistorialChart" height="120"></canvas>
+ </div>
+ <div id="historialList" class="mt-3"></div>
 </div>
 @section Scripts {
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        (function () {
-            const ctx = document.getElementById('miHistorialChart').getContext('2d');
-            let chart = null;
-            async function cargar(desde, hasta) {
-                let url = '/api/historial/mio';
-                const qs = [];
-                if (desde) qs.push('from=' + encodeURIComponent(desde));
-                if (hasta) qs.push('to=' + encodeURIComponent(hasta));
-                if (qs.length) url += '/filtrado?' + qs.join('&');
-                const r = await fetch(url, { credentials: 'include' });
-                if (!r.ok) { console.error('Error', r.status); return; }
-                const json = await r.json();
-                // json.Cuatrimestres -> [{ Cuatrimestre: "2024-1", Cursos: [{ Curso, Nota, Fecha }], Promedio }]
-                const labels = [];
-                const data = [];
-                (json.cuatrimestres || []).forEach(c => {
-                    labels.push(c.cuatrimestre || c.Cuatrimestre || '');
-                    data.push(c.promedio ?? 0);
-                });
-                if (chart) chart.destroy();
-                chart = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{ label: 'Promedio por cuatrimestre', data: data, backgroundColor: 'rgba(54,162,235,0.5)' }]
-                    }
-                });
-            }
-            document.getElementById('btnFiltrar').addEventListener('click', () => {
-                const desde = document.getElementById('desde').value;
-                const hasta = document.getElementById('hasta').value;
-                cargar(desde, hasta);
-            });
-            // carga inicial
-            cargar();
-        })();
-    </script>
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+ <script>
+ (function () {
+ const filtroCurso = document.getElementById('filtroCurso');
+ const desde = document.getElementById('desde');
+ const hasta = document.getElementById('hasta');
+ const btnFiltrar = document.getElementById('btnFiltrar');
+ const btnLimpiar = document.getElementById('btnLimpiar');
+ const tipoGrafico = document.getElementById('tipoGrafico');
+ const historialList = document.getElementById('historialList');
+ const ctx = document.getElementById('miHistorialChart').getContext('2d');
+ let chart = null;
+ let timer = null;
+ const refreshMs =30000; // auto-refresh every30s
+
+ btnFiltrar.addEventListener('click', loadAndRender);
+ btnLimpiar.addEventListener('click', () => { filtroCurso.value = ''; desde.value = ''; hasta.value = ''; loadAndRender(); });
+ tipoGrafico.addEventListener('change', () => buildChart(currentRecords()));
+
+ function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+
+ async function fetchHistorial(from, to) {
+ let url = '/api/historial/mio';
+ if (from || to) {
+ const q = new URLSearchParams();
+ if (from) q.set('from', from);
+ if (to) q.set('to', to);
+ url = '/api/historial/mio/filtrado?' + q.toString();
+ }
+ const r = await fetch(url, { credentials: 'include' });
+ if (!r.ok) throw new Error('Error cargando historial');
+ return await r.json();
+ }
+
+ function normalize(dto){
+ // Normalize to { cuatrimestres: [{ cuatrimestre, cursos: [{ curso, nota, participacion, estado, fecha }] }] }
+ const cuats = (dto.cuatrimestres || dto.Cuatrimestres || []).map(g => ({
+ cuatrimestre: g.cuatrimestre || g.Cuatrimestre || '',
+ cursos: (g.cursos || g.Cursos || []).map(c => ({
+ curso: c.curso || c.Curso || '',
+ nota: (c.nota ?? c.Nota) ??0,
+ participacion: c.participacion || c.Participacion || '',
+ estado: c.estado || c.Estado || '',
+ fecha: c.fecha || c.Fecha || ''
+ }))
+ }));
+ return { cuatrimestres: cuats };
+ }
+
+ function flatten(mapped){
+ const out = [];
+ (mapped.cuatrimestres || []).forEach(g => {
+ (g.cursos || []).forEach(it => {
+ out.push({ curso: it.curso, cuatrimestre: g.cuatrimestre, nota: Number(it.nota ||0), fecha: it.fecha || '', participacion: it.participacion, estado: it.estado });
+ });
+ });
+ // ensure dates are strings; sort by fecha
+ out.sort((a,b) => new Date(a.fecha) - new Date(b.fecha));
+ return out;
+ }
+
+ function currentRecords(){
+ // get last rendered records stored on chart or list (we keep storedRecords)
+ return window.__miHistorialRecords || [];
+ }
+
+ function renderList(records){
+ if(!records.length){ historialList.innerHTML = '<div class="text-muted">Sin registros</div>'; return; }
+ historialList.innerHTML = `<table class="table table-sm"><thead><tr><th>Fecha</th><th>Cuatrimestre</th><th>Curso</th><th>Participación</th><th>Nota</th><th>Estado</th></tr></thead><tbody>${records.map(r=>`<tr><td>${escapeHtml(r.fecha)}</td><td>${escapeHtml(r.cuatrimestre)}</td><td>${escapeHtml(r.curso)}</td><td>${escapeHtml(r.participacion||'Final')}</td><td>${r.nota}</td><td>${escapeHtml(r.estado||'')}</td></tr>`).join('')}</tbody></table>`;
+ }
+
+ function buildChart(records){
+ if(chart) chart.destroy();
+ if(!records.length) return;
+ const tipo = tipoGrafico.value || 'bar';
+ const selectedCurso = filtroCurso.value;
+ if(selectedCurso){
+ // plot progression for selected course by fecha
+ const rec = records.filter(r => r.curso === selectedCurso && r.fecha);
+ const labels = rec.map(r => r.fecha);
+ const data = rec.map(r => r.nota);
+ chart = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: selectedCurso, data, borderColor: 'rgba(54,162,235,1)', backgroundColor: 'rgba(54,162,235,0.2)', tension:0.2 }] }, options: { responsive:true } });
+ } else {
+ // average per cuatrimestre
+ const byCu = {};
+ records.forEach(r => { const k = r.cuatrimestre || 'Sin cuatrimestre'; if(!byCu[k]) byCu[k] = { sum:0, cnt:0 }; byCu[k].sum += r.nota; byCu[k].cnt++; });
+ const labels = Object.keys(byCu).sort();
+ const data = labels.map(l => +(byCu[l].sum / byCu[l].cnt).toFixed(2));
+ chart = new Chart(ctx, { type: tipo, data: { labels, datasets: [{ label: 'Promedio', data, backgroundColor: 'rgba(75,192,192,0.5)' }] }, options: { responsive:true } });
+ }
+ }
+
+ async function loadAndRender(){
+ try{
+ const dto = await fetchHistorial(desde.value, hasta.value);
+ const mapped = normalize(dto);
+ const flat = flatten(mapped);
+ // populate course select
+ const cursos = Array.from(new Set(flat.map(r=>r.curso))).filter(x=>x).sort();
+ filtroCurso.innerHTML = '<option value="">Todos</option>' + cursos.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+ // apply course filter
+ const selected = filtroCurso.value;
+ const filtered = selected ? flat.filter(r => r.curso === selected) : flat;
+ // store for auto-refresh uses
+ window.__miHistorialRecords = filtered;
+ renderList(filtered);
+ buildChart(filtered);
+ }catch(e){ console.error(e); historialList.innerHTML = '<div class="text-danger">Error al cargar historial</div>'; }
+ }
+
+ // initial load
+ loadAndRender();
+ // auto-refresh
+ if(timer) clearInterval(timer);
+ timer = setInterval(loadAndRender, refreshMs);
+ })();
+ </script>
 }

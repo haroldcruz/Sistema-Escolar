@@ -13,7 +13,7 @@
         <div class="border rounded p-2 small bg-light">
             <strong>Instrucciones:</strong>
             <ul class="mb-0">
-                <li>Escriba al menos3 caracteres para buscar.</li>
+                <li>Escriba al menos 3 caracteres para buscar.</li>
                 <li>Seleccione un estudiante para ver su historial.</li>
                 <li>Use filtros de fechas o cursos y presione "Aplicar".</li>
             </ul>
@@ -60,12 +60,12 @@
             let debounceTimer = null;
             input.addEventListener('input', function(){
                 const q = this.value.trim(); lista.innerHTML=''; if(q.length<3){ return; }
-                clearTimeout(debounceTimer); debounceTimer = setTimeout(()=> buscar(q),300);
+                clearTimeout(debounceTimer); debounceTimer = setTimeout(()=> buscar(q),250);
             });
             async function buscar(txt){
                 lista.innerHTML = '<div class="list-group-item small text-muted">Buscando...</div>';
                 try{
-                    const r = await fetch('/api/historial/buscar?term='+ encodeURIComponent(txt));
+                    const r = await fetch('/api/estudiantes/buscar?term='+ encodeURIComponent(txt), { credentials:'include' });
                     if(!r.ok){ lista.innerHTML = '<div class="list-group-item text-danger">Error</div>'; return; }
                     const json = await r.json();
                     if(!json.length){ lista.innerHTML = '<div class="list-group-item small text-muted">Sin resultados</div>'; return; }
@@ -82,7 +82,7 @@
                     const hasta = document.getElementById('hasta').value; if(hasta) params.set('to', hasta);
                     const cursos = document.getElementById('cursos').value.split(',').map(c=>c.trim()).filter(c=>c); if(cursos.length) cursos.forEach(c=> params.append('cursos', c));
                     const url = '/api/historial/'+ estudianteId + '/agrupado?'+ params.toString();
-                    const r = await fetch(url);
+                    const r = await fetch(url, { credentials:'include' });
                     if(!r.ok){ cont.innerHTML = '<div class="text-danger">Error al cargar</div>'; return; }
                     const data = await r.json();
                     render(data);

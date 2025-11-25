@@ -41,5 +41,16 @@ namespace SistemaEscolar.Controllers.API
  var dto = await _historial.GetHistorialAgrupadoFiltradoAsync(uid, from, to, cursosList);
  return Ok(dto);
  }
+
+ // GET api/historial/estudiante/{estudianteId}
+ // Permitir a Docente, Coordinador y Administrador ver el historial de cualquier estudiante
+ [HttpGet("estudiante/{estudianteId}")]
+ [Authorize(Roles = "Docente,Coordinador,Administrador")]
+ public async Task<IActionResult> GetHistorialPorEstudiante(int estudianteId)
+ {
+ if (estudianteId <=0) return BadRequest("Identificador inválido");
+ var dto = await _historial.GetHistorialAsync(estudianteId);
+ return Ok(dto);
+ }
  }
 }
