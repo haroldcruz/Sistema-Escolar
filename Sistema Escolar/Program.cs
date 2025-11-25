@@ -77,8 +77,18 @@ builder.Services.AddAuthentication(options =>
  options.ForwardDefaultSelector = context =>
  {
  var path = context.Request.Path;
+ // If path starts with /api, decide between JWT and Cookie depending on presence of Authorization header or jwt cookie
  if (path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+ {
+ // If Authorization header (Bearer) is present or jwt cookie exists, prefer JWT; otherwise fall back to Cookie
+ var authHeader = context.Request.Headers["Authorization"].ToString();
+ if (!string.IsNullOrEmpty(authHeader) || context.Request.Cookies.ContainsKey("jwt"))
+ {
  return JwtBearerDefaults.AuthenticationScheme;
+ }
+ // allow browser session cookie to authenticate AJAX calls when no JWT provided
+ return CookieAuthenticationDefaults.AuthenticationScheme;
+ }
  return CookieAuthenticationDefaults.AuthenticationScheme;
  };
 })

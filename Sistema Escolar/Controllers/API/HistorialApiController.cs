@@ -52,5 +52,18 @@ namespace SistemaEscolar.Controllers.API
  var dto = await _historial.GetHistorialAsync(estudianteId);
  return Ok(dto);
  }
+
+ // GET api/historial/{estudianteId}/agrupado?from=...&to=...&cursos=code1,code2
+ // Endpoint para obtener historial agrupado (por cuatrimestre) filtrado - accesible a Docente/Coordinador/Administrador
+ [HttpGet("{estudianteId}/agrupado")]
+ [Authorize(Roles = "Docente,Coordinador,Administrador")]
+ public async Task<IActionResult> GetHistorialAgrupado(int estudianteId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? cursos)
+ {
+ if (estudianteId <=0) return BadRequest("Identificador inválido");
+ IEnumerable<string>? cursosList = null;
+ if (!string.IsNullOrWhiteSpace(cursos)) cursosList = cursos.Split(',');
+ var dto = await _historial.GetHistorialAgrupadoFiltradoAsync(estudianteId, from, to, cursosList);
+ return Ok(dto);
+ }
  }
 }

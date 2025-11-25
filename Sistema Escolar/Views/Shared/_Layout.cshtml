@@ -1,4 +1,4 @@
-﻿@* Layout con visibilidad por permisos granular y separación de módulos *@
+﻿@* Layout con visibilidad por permisos y menú ordenado *@
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,70 +6,122 @@
  <meta name="viewport" content="width=device-width, initial-scale=1" />
  <title>@(ViewBag.Title ?? "Inicio") - Sistema Escolar</title>
  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+ <link href="/css/site.css" rel="stylesheet" />
 </head>
 @{
- var roles = string.Join(',', User?.Claims.Where(c=>c.Type==System.Security.Claims.ClaimTypes.Role).Select(c=>c.Value) ?? new string[0]);
+ var roles = string.Join(',', User?.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value) ?? new string[0]);
  var userId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
  var toastMsg = (TempData["ToastMessage"] as string) ?? (ViewBag.ToastMessage as string) ?? string.Empty;
  var toastType = (TempData["ToastType"] as string) ?? (ViewBag.ToastType as string) ?? "info";
- var isAdmin = User?.IsInRole("Administrador") == true;
- var isDocente = User?.IsInRole("Docente") == true;
- var isCoordinador = User?.IsInRole("Coordinador") == true;
- var isEstudiante = User?.IsInRole("Estudiante") == true;
+
+ bool isAuth = User?.Identity?.IsAuthenticated ?? false;
+ bool isAdmin = User?.IsInRole("Administrador") == true;
+ bool isDocente = User?.IsInRole("Docente") == true;
+ bool isCoordinador = User?.IsInRole("Coordinador") == true;
+ bool isEstudiante = User?.IsInRole("Estudiante") == true;
+ bool canCursosVer = User?.HasClaim("permiso", "Cursos.Ver") == true;
+ bool canCursosCrear = User?.HasClaim("permiso", "Cursos.Crear") == true;
+ bool canUsuariosGestion = User?.HasClaim("permiso", "Usuarios.Gestion") == true;
+ bool canBitacora = User?.HasClaim("permiso", "Bitacora.Ver") == true;
+ bool canAsignarDocente = User?.HasClaim("permiso", "Cursos.AsignarDocente") == true;
+ bool canEvaluacionesCrear = User?.HasClaim("permiso", "Evaluaciones.Crear") == true;
+ bool canSeguridad = User?.HasClaim("permiso", "Seguridad.Gestion") == true;
 }
 <body data-user-id="@userId" data-user-role="@roles">
- <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+ <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3" aria-label="Main navigation">
  <div class="container-fluid">
- <a class="navbar-brand" href="/">Sistema Escolar</a>
- <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+ <a class="navbar-brand me-2" href="/">Sistema Escolar</a>
+ <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Mostrar menú">
  <span class="navbar-toggler-icon"></span>
  </button>
- <div class="collapse navbar-collapse" id="nav">
+ <div class="collapse navbar-collapse" id="mainNav">
  <ul class="navbar-nav me-auto mb-2 mb-lg-0">
- @if (User?.Identity?.IsAuthenticated ?? false)
+ @if (isAuth)
  {
- // Cursos: permitir a Docente o a usuarios con permiso/Administrador, pero NO mostrar a Estudiantes
- if ((isDocente || User.HasClaim("permiso","Cursos.Ver") || isAdmin) && !isEstudiante) { <li class="nav-item"><a class="nav-link" asp-controller="Cursos" asp-action="Index">Cursos</a></li> }
- // Módulo para asignar docentes
- if (User.HasClaim("permiso","Cursos.AsignarDocente") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Docentes">Asignar Docentes</a></li> }
- // Usuarios: permitir ver si tiene permiso o es Administrador
- if (User.HasClaim("permiso","Usuarios.Gestion") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Usuarios">Usuarios</a></li> }
- // Roles / Seguridad: mostrar si tiene el permiso de seguridad o es Administrador
- if (User.HasClaim("permiso","Seguridad.Gestion") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Seguridad/Roles">Roles</a></li> }
- // Bitácora: mostrar si tiene permiso o es Administrador
- if (User.HasClaim("permiso","Bitacora.Ver") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Bitacora">Bitácora</a></li> }
- // Evaluaciones: disponible para docentes y para usuarios con permiso/administradores
- if (isDocente || User.HasClaim("permiso","Evaluaciones.Crear") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Evaluaciones">Evaluaciones</a></li> }
- // Historial completo: para Docente, Coordinador y Administrador
- if (isDocente || isCoordinador || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Historial">Historial</a></li> }
- // Mi Historial: visible sólo para Estudiantes (su propio historial)
- if (isEstudiante) { <li class="nav-item"><a class="nav-link" href="/MiHistorial">Mi Historial</a></li> }
- // Estadísticas: permitir a Docente, Coordinador y Administrador
- if (isAdmin || isDocente || isCoordinador) { <li class="nav-item"><a class="nav-link" href="/Estadisticas">Estadísticas</a></li> }
- // Matriculación: solo admin o permiso Cursos.Crear
- if (User.HasClaim("permiso","Cursos.Crear") || isAdmin) { <li class="nav-item"><a class="nav-link" href="/Matriculas/Crear">Matricular</a></li> }
- // Bloques de evaluación: reservado para Administrador
- if (isAdmin) { <li class="nav-item"><a class="nav-link" href="/Bloques">Bloques</a></li> }
+ // If user is Admin: show only the specified admin items
+ if (isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Cursos" data-protect="true">Cursos</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Matriculas/Crear" data-protect="true">Matricular</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Docentes" data-protect="true">Asignar Docentes</a></li>
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle" href="#" id="adminMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">Administración</a>
+ <ul class="dropdown-menu" aria-labelledby="adminMenu">
+ <li><a class="dropdown-item" href="/Seguridad/Roles" data-protect="true">Roles</a></li>
+ <li><a class="dropdown-item" href="/Usuarios" data-protect="true">Usuarios</a></li>
+ <li><a class="dropdown-item" href="/Bitacora" data-protect="true">Bitácora</a></li>
+ </ul>
+ </li>
+ }
+ else if (isDocente)
+ {
+ // Docente minimal menu
+ <li class="nav-item"><a class="nav-link" href="/Evaluaciones" data-protect="true">Evaluaciones</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Historial" data-protect="true">Historial</a></li>
+ }
+ else
+ {
+ // Primary navigation for other roles
+ if ((isDocente || canCursosVer || isAdmin) && !isEstudiante)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Cursos" data-protect="true">Cursos</a></li>
+ }
+ if (isDocente || canEvaluacionesCrear || isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Evaluaciones" data-protect="true">Evaluaciones</a></li>
+ }
+ if (isDocente || isCoordinador || isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Historial" data-protect="true">Historial</a></li>
+ }
+ else if (isEstudiante)
+ {
+ <li class="nav-item"><a class="nav-link" href="/MiHistorial" data-protect="true">Mi Historial</a></li>
+ }
+ if (isDocente || isCoordinador || isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Estadisticas" data-protect="true">Estadísticas</a></li>
+ }
+ if (canCursosCrear || isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Matriculas/Crear" data-protect="true">Matricular</a></li>
+ }
+ if (canAsignarDocente || isAdmin)
+ {
+ <li class="nav-item"><a class="nav-link" href="/Docentes" data-protect="true">Asignar Docentes</a></li>
+ }
+ if (canUsuariosGestion || canSeguridad || canBitacora || isAdmin)
+ {
+ <li class="nav-item dropdown">
+ <a class="nav-link dropdown-toggle" href="#" id="adminMenu2" role="button" data-bs-toggle="dropdown" aria-expanded="false">Administración</a>
+ <ul class="dropdown-menu" aria-labelledby="adminMenu2">
+ @if (canUsuariosGestion || isAdmin) { <li><a class="dropdown-item" href="/Usuarios" data-protect="true">Usuarios</a></li> }
+ @if (canSeguridad || isAdmin) { <li><a class="dropdown-item" href="/Seguridad/Roles" data-protect="true">Roles</a></li> }
+ @if (canBitacora || isAdmin) { <li><a class="dropdown-item" href="/Bitacora" data-protect="true">Bitácora</a></li> }
+ @if (isAdmin) { /* intentionally not showing Bloques here unless desired */ }
+ </ul>
+ </li>
+ }
  }
  }
  </ul>
+
  <ul class="navbar-nav ms-auto">
- @if (User?.Identity?.IsAuthenticated ?? false)
+ @if (isAuth)
  {
- // Mostrar enlace para editar perfil a cualquier usuario autenticado
- if (!string.IsNullOrEmpty(userId)) { <li class="nav-item"><a class="nav-link" href="/Usuarios/Editar/@userId">Mi Perfil</a></li> }
- <li class="nav-item"><span class="navbar-text">@User.Identity!.Name</span></li>
+ // Only keep Logout in navbar; username and profile will be shown in Home index
  <li class="nav-item"><a class="nav-link" href="/Auth/Logout">Salir</a></li>
  }
  else
  {
- <li class="nav-item"><a class="nav-link" href="/Auth/Login">Login</a></li>
+ <li class="nav-item"><a class="nav-link" href="/Auth/Login">Iniciar Sesión</a></li>
  }
  </ul>
  </div>
  </div>
  </nav>
- <main class="container">
+
+ <main class="container-lg app-main px-2">
  @RenderBody()
  </main>
 
@@ -77,10 +129,8 @@
  <div aria-live="polite" aria-atomic="true" class="position-fixed top-0 end-0 p-3" style="z-index:1080;">
  <div id="appToast" class="toast align-items-center text-bg-@toastType border-0" role="alert" aria-live="assertive" aria-atomic="true">
  <div class="d-flex">
- <div class="toast-body">
- @toastMsg
- </div>
- <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+ <div class="toast-body">@toastMsg</div>
+ <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
  </div>
  </div>
  </div>
@@ -92,31 +142,13 @@
  <script>if(!window.jQuery.validator){document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validate/1.19.5/jquery.validate.min.js"><\\/script>');}</script>
  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-validation-unobtrusive/3.2.12/jquery.validate.unobtrusive.min.js"></script>
  <script src="/js/site.js"></script>
+ <script src="/js/responsive.js"></script>
  <script>
- // Ensure a safe global appShowToast exists even if site.js failed to define it
+ // Ensure toast function exists
  if (typeof window.appShowToast !== 'function') {
- window.appShowToast = function(message, type){
- try{
- const toastEl = document.getElementById('appToast');
- if(!toastEl) { alert(message); return; }
- const body = toastEl.querySelector('.toast-body');
- if(body) body.textContent = message;
- toastEl.className = toastEl.className.replace(/text-bg-(\w+)/g, '');
- toastEl.classList.add('text-bg-' + (type || 'info'));
- const toast = new bootstrap.Toast(toastEl, { delay:5000 });
- toast.show();
- }catch(e){ alert(message); }
- };
+ window.appShowToast = function(message, type){ try{ const toastEl = document.getElementById('appToast'); if(!toastEl) { alert(message); return; } const body = toastEl.querySelector('.toast-body'); if(body) body.textContent = message; toastEl.className = toastEl.className.replace(/text-bg-(\w+)/g, ''); toastEl.classList.add('text-bg-' + (type || 'info')); const toast = new bootstrap.Toast(toastEl, { delay:5000 }); toast.show(); } catch(e){ alert(message); } };
  }
-
- document.addEventListener('DOMContentLoaded', function(){
- var toastEl = document.getElementById('appToast');
- if (!toastEl) return;
- var msg = '@(toastMsg.Replace("'","\'"))';
- if (!msg) return; // no mostrar si no hay mensaje
- var toast = new bootstrap.Toast(toastEl, { delay:5000 });
- toast.show();
- });
+ document.addEventListener('DOMContentLoaded', function(){ var toastEl = document.getElementById('appToast'); if (!toastEl) return; var msg = '@(toastMsg.Replace("'","\'"))'; if (!msg) return; var toast = new bootstrap.Toast(toastEl, { delay:5000 }); toast.show(); });
  </script>
  @RenderSection("Scripts", required: false)
 </body>

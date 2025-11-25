@@ -12,6 +12,7 @@
  Layout = "/Views/Shared/_Layout.cshtml";
  var isAuth = User?.Identity?.IsAuthenticated ?? false;
  var nombre = User?.Identity?.Name ?? "";
+ var userId = User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? string.Empty;
  var isAdmin = User?.IsInRole("Administrador") == true;
  var isDocente = User?.IsInRole("Docente") == true;
  var isCoordinador = User?.IsInRole("Coordinador") == true;
@@ -23,6 +24,25 @@
  <h1 class="display-5">Bienvenido @nombre</h1>
  <p class="lead">Este es su Sistema de Gestión Escolar.</p>
  <hr />
+ @* Docente: mostrar sólo las acciones relevantes *@
+ @if (isDocente)
+ {
+ <div class="row g-3 mt-2 justify-content-center">
+ <div class="col-12 col-sm-8 col-md-6">
+ <div class="card p-3">
+ <h5 class="mb-3">Panel de Docente</h5>
+ <div class="d-grid gap-2">
+ <a class="btn btn-primary" href="/Evaluaciones">Evaluaciones</a>
+ <a class="btn btn-secondary" href="/Historial">Historial Académico</a>
+ <a class="btn btn-outline-primary" href="/Cursos">Mis Cursos</a>
+ <a class="btn btn-outline-secondary" href="/Usuarios/Editar/@userId">Editar Perfil</a>
+ </div>
+ </div>
+ </div>
+ </div>
+ }
+ else
+ {
  <h5>Accesos rápidos</h5>
  <div class="row g-3 mt-2">
  @* Cursos: mostrar sólo para Docente, Administrador o usuarios con permiso, pero no a Estudiantes *@
@@ -83,9 +103,10 @@
  }
  @* Enlace editar perfil (siempre visible para autenticados) *@
  <div class="col-sm-6 col-md-3">
- <a class="btn btn-outline-secondary w-100" href="/Usuarios/Editar/@(User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)">Mi Perfil</a>
+ <a class="btn btn-outline-secondary w-100" href="/Usuarios/Editar/@userId">Mi Perfil</a>
  </div>
  </div>
+ }
  }
  else
  {

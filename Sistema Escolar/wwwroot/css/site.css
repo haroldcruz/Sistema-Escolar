@@ -20,3 +20,46 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+/* Responsive tweaks for Sistema Escolar */
+:root{
+ --card-padding: .9rem;
+}
+
+/* Ensure container uses full width on mobile and comfortable margins on desktop */
+main.container-fluid{ padding-left: .5rem; padding-right: .5rem; }
+
+/* constrain app content on large screens for better UX */
+.app-main{ max-width:1200px; margin:0 auto; }
+
+/* Buttons full width on small devices */
+@media (max-width:767.98px){
+ .row.g-3 .col-sm-6 { flex:00100%; max-width:100%; }
+ .btn.w-100, .btn.w-100 { width:100% !important; }
+ .card.p-3 { padding: var(--card-padding); }
+ .navbar .navbar-brand { font-size:1rem; }
+}
+
+/* Tables responsive wrapper */
+.table-responsive { overflow-x:auto; -webkit-overflow-scrolling: touch; }
+
+/* Make charts resize nicely */
+.canvas-container{ position: relative; width:100%; height:300px; }
+@media (max-width:767.98px){
+ .canvas-container{ height:220px; }
+}
+
+/* Small adjustments for cards in statistics and historial */
+.card.p-3 h5{ font-size:1rem; margin-bottom: .5rem; }
+
+/* Accessibility: increase tap target for links/buttons */
+a.btn, .nav-link { padding: .5rem .75rem; }
+
+/* Form required field indicator */
+label.required:after{ content: " *"; color: #dc3545; }
+
+/* Toast stacking on small screens */
+@media (max-width:576px){
+ .position-fixed.top-0.end-0.p-3{ right: .5rem; left: .5rem; }
+ .toast{ width: auto; }
+}

@@ -1,15 +1,18 @@
 @model IEnumerable<SistemaEscolar.DTOs.Usuarios.UsuarioDTO>
-@{ ViewBag.Title = "Usuarios"; Layout = "/Views/Shared/_Layout.cshtml"; }
-<h2>Usuarios</h2>
+@{ ViewBag.Title = "Usuarios"; Layout = "/Views/Shared/_Layout.cshtml"; var count = ViewBag.UsuariosCount ??0; }
+<h2>Usuarios <small class="text-muted">(registros: @count)</small></h2>
 <div class="mb-3">
+ @if(User.IsInRole("Administrador") || User.HasClaim("permiso","Usuarios.Gestion")){
  <a class="btn btn-sm btn-primary" href="/Usuarios/Crear">Crear Usuario</a>
+ }
 </div>
-<table class="table table-sm table-striped align-middle" id="tablaUsuarios">
+<div class="table-responsive">
+ <table class="table table-sm table-striped align-middle" id="tablaUsuarios">
  <thead class="table-dark">
  <tr><th>Id</th><th>Nombre</th><th>Identificación</th><th>Email</th><th>Roles</th><th style="width:150px">Acciones</th></tr>
  </thead>
  <tbody>
- @if(Model!=null){
+ @if (Model != null && Model.Any()) {
  foreach(var u in Model){
  <tr>
  <td>@u.Id</td>
@@ -17,9 +20,7 @@
  <td>@u.Identificacion</td>
  <td>@u.Email</td>
  <td>
- @if(u.Roles.Any()){
- <span class="small">@string.Join(", ", u.Roles)</span>
- } else { <span class="text-muted small">(sin roles)</span> }
+ @if(u.Roles != null && u.Roles.Any()) { <span class="small">@string.Join(", ", u.Roles)</span> } else { <span class="text-muted small">(sin roles)</span> }
  </td>
  <td>
  <a class="btn btn-sm btn-outline-secondary" href="/Usuarios/Editar/@u.Id">Editar</a>
@@ -29,6 +30,47 @@
  </td>
  </tr>
  }
+ } else {
+ <tr><td colspan="6" class="text-center text-muted">No hay usuarios cargados en el servidor. Intentando cargar vía AJAX...</td></tr>
  }
  </tbody>
-</table>
+ </table>
+</div>
+
+@section Scripts{
+ <script>
+ (function(){
+ const tbody = document.querySelector('#tablaUsuarios tbody');
+ // if server rendered rows exist, do nothing
+ if (tbody && tbody.querySelectorAll('tr').length >1 && !tbody.textContent.includes('Intentando cargar vía AJAX')) return;
+ fetch('/api/usuarios', { credentials: 'include' })
+ .then(r => {
+ if (!r.ok) throw new Error('HTTP ' + r.status);
+ return r.json();
+ })
+ .then(data => {
+ if (!Array.isArray(data) || data.length ===0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Sin usuarios</td></tr>'; return; }
+ tbody.innerHTML = data.map(u => `
+ <tr>
+ <td>${u.id}</td>
+ <td>${escapeHtml(u.nombreCompleto)}</td>
+ <td>${escapeHtml(u.identificacion)}</td>
+ <td>${escapeHtml(u.email)}</td>
+ <td>${escapeHtml((u.roles||[]).join(', '))}</td>
+ <td>
+ <a class="btn btn-sm btn-outline-secondary" href="/Usuarios/Editar/${u.id}">Editar</a>
+ <form method="post" action="/Usuarios/Eliminar/${u.id}" class="d-inline" onsubmit="return confirm('¿Eliminar usuario?');">
+ <button class="btn btn-sm btn-outline-danger">Eliminar</button>
+ </form>
+ </td>
+ </tr>
+ `).join('');
+ })
+ .catch(err => {
+ console.error(err);
+ if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error cargando usuarios: '+escapeHtml(err.message)+'</td></tr>';
+ });
+ function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+ })();
+ </script>
+}

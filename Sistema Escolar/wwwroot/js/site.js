@@ -245,4 +245,21 @@
  return;
  }
  });
+
+ // Ensure appShowToast exists early
+ function ensureToast(){ if (typeof window.appShowToast !== 'function'){ window.appShowToast = function(message, type){ alert(message); }; } }
+ ensureToast();
+
+ // Intercept protected links and show friendly toast when user likely lacks permission
+ document.addEventListener('click', function(e){
+ var a = e.target.closest && e.target.closest('a[data-protect]');
+ if (!a) return;
+ // Do a simple check: if link has attribute data-protect and also class 'disabled-for-user' then prevent default and show toast
+ if (a.classList.contains('disabled-for-user')){
+ e.preventDefault();
+ window.appShowToast('No tiene permiso para acceder a esta sección', 'warning');
+ return;
+ }
+ // Otherwise allow navigation; server still authorizes
+ });
 })();
