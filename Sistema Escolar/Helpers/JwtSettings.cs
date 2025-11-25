@@ -6,6 +6,6 @@ namespace SistemaEscolar.Helpers
  public string Secret { get; set; } = string.Empty; // Clave secreta
  public string Issuer { get; set; } = string.Empty; // Emisor
  public string Audience { get; set; } = string.Empty; // Audiencia
- public int ExpirationMinutes { get; set; } =60; // Minutos de vigencia
+ public int ExpirationMinutes { get; set; } =2; // Minutos de vigencia
  }
 }

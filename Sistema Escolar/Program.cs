@@ -136,7 +136,12 @@ builder.Services.AddAuthorization(opts =>
  opts.AddPolicy(p, pol => pol.RequireAssertion(ctx => ctx.User.IsInRole("Administrador") || ctx.User.HasClaim("permiso", p)));
 });
 
-builder.Services.AddControllersWithViews();
+// Controllers with views + configure JSON to use camelCase so frontend JS keys match (e.g. 'codigo')
+builder.Services.AddControllersWithViews()
+ .AddJsonOptions(o =>
+ {
+ o.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+ });
 
 var app = builder.Build();
 

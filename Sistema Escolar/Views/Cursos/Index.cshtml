@@ -20,6 +20,9 @@
     <tbody></tbody>
 </table>
 <script>
+    // small HTML escape helper to avoid inserting raw content
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]); }); }
+
     async function cargar(){
         const r = await fetch('/api/cursos', { credentials:'include' });
         if(!r.ok){ alert('Error al cargar cursos'); return; }
@@ -27,13 +30,25 @@
         const tbody = document.querySelector('#tablaCursos tbody');
         tbody.innerHTML = '';
         data.forEach(c => {
+            // provide safe fallbacks for possibly missing fields
+            const codigo = c.codigo ?? '';
+            // If the API returned 'nombre' that already contains the code prefix like "C002 - Nombre",
+            // remove the prefix to avoid duplicate display (we show codigo separately)
+            let nombreDisplay = c.nombre ?? '';
+            if (nombreDisplay && codigo && nombreDisplay.startsWith(codigo + ' - ')){
+                nombreDisplay = nombreDisplay.substring((codigo + ' - ').length);
+            }
+            const creditos = (c.creditos === null || c.creditos === undefined) ? '' : c.creditos;
+            const cuatrimestre = c.cuatrimestre ?? '';
+            const docentes = (c.docentes || []).join(', ');
+
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td>${c.codigo}</td>
-                <td>${c.nombre}</td>
-                <td>${c.creditos}</td>
-                <td>${c.cuatrimestre ?? ''}</td>
-                <td>${(c.docentes||[]).join(', ')}</td>
+                <td>${escapeHtml(codigo)}</td>
+                <td>${escapeHtml(nombreDisplay)}</td>
+                <td>${escapeHtml(creditos)}</td>
+                <td>${escapeHtml(cuatrimestre)}</td>
+                <td>${escapeHtml(docentes)}</td>
                 <td>
                     <a class="btn btn-sm btn-outline-secondary" href="/Cursos/Editar/${c.id}">Editar</a>
                     <a class="btn btn-sm btn-outline-info" href="/Cursos/AsignarDocentes/${c.id}">Docentes</a>

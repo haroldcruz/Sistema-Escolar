@@ -19,12 +19,25 @@ namespace SistemaEscolar.Controllers.API
  [HttpGet]
  public async Task<IActionResult> Get([FromQuery] int? cuatrimestreId)
  {
- var query = _ctx.Cursos.AsNoTracking();
+ IQueryable<SistemaEscolar.Models.Academico.Curso> query = _ctx.Cursos.AsNoTracking()
+ .Include(c => c.Cuatrimestre)
+ .Include(c => c.CursoDocentes).ThenInclude(cd => cd.Docente)
+ ;
  if (cuatrimestreId.HasValue)
  {
  query = query.Where(c => c.CuatrimestreId == cuatrimestreId.Value);
  }
- var list = await query.OrderBy(c => c.Nombre).Select(c => new { c.Id, c.Codigo, Nombre = c.Codigo + " - " + c.Nombre }).ToListAsync();
+ var list = await query.OrderBy(c => c.Codigo).Select(c => new {
+ id = c.Id,
+ codigo = c.Codigo,
+ nombre = string.IsNullOrWhiteSpace(c.Nombre) ? c.Codigo : (c.Codigo + " - " + c.Nombre),
+ creditos = c.Creditos,
+ cuatrimestre = c.Cuatrimestre != null ? c.Cuatrimestre.Nombre : string.Empty,
+ docentes = c.CursoDocentes
+ .Select(cd => ((cd.Docente != null ? (cd.Docente.Nombre ?? string.Empty) : string.Empty)
+ + " " + (cd.Docente != null ? (cd.Docente.Apellidos ?? string.Empty) : string.Empty)).Trim())
+ .Where(s => !string.IsNullOrEmpty(s)).ToList()
+ }).ToListAsync();
  return Ok(list);
  }
 

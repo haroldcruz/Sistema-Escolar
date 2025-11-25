@@ -1,2 +1,1 @@
-﻿-- Borra todo y reinicia identidad
-TRUNCATE TABLE BitacoraEntries;
+﻿select * from Cursos
